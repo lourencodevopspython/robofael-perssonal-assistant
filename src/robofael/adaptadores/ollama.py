@@ -32,6 +32,7 @@ from typing import Any
 from robofael.adaptadores.ferramentas import FERRAMENTAS, EntradaInvalida, ExecutorFerramentas
 from robofael.adaptadores.offline import ModeloOffline
 from robofael.dominio.linguagem import descrever_agora, pede_agenda, pede_nova_conversa
+from robofael.dominio.quando import interpretar_quando
 from robofael.i18n import Tradutor
 from robofael.portas import ModeloDisponivel, ProvedorIndisponivel
 
@@ -185,8 +186,9 @@ def _chamada_escrita_como_texto(texto: str) -> tuple[str, list[dict]]:
     return "", []
 
 
-def _coagir(entrada: Any) -> Any:
-    """Modelos pequenos mandam "false" e "3" como texto: converte o óbvio antes de validar."""
+def _coagir(entrada: Any, agora: datetime) -> Any:
+    """Modelos pequenos mandam "false" e "3" como texto, listas no lugar de texto e datas como
+    "tomorrow 09:00": converte o óbvio antes de validar."""
     if isinstance(entrada, str):
         try:
             entrada = json.loads(entrada)
@@ -200,8 +202,25 @@ def _coagir(entrada: Any) -> Any:
             valor = valor.lower() == "true"
         elif isinstance(valor, str) and valor.isdigit() and campo == "id":
             valor = int(valor)
+        elif campo == "texto" and isinstance(valor, list | tuple):
+            valor = " ".join(str(v) for v in valor)
+        elif campo == "quando" and isinstance(valor, str):
+            valor = _data_iso(valor, agora)
         convertida[campo] = valor
     return convertida
+
+
+def _data_iso(valor: str, agora: datetime) -> str:
+    """'2026-10-30T09:00' fica como está; 'tomorrow 09:00' ou 'in 5 minutes' vira ISO."""
+    try:
+        datetime.fromisoformat(valor)
+        return valor
+    except ValueError:
+        quando = interpretar_quando(valor, agora)
+        return quando.momento.isoformat(timespec="minutes") if quando else valor
+
+
+CRIACOES = frozenset({"adicionar_tarefa", "criar_lembrete"})
 
 
 class ModeloOllama:
@@ -222,6 +241,7 @@ class ModeloOllama:
         self.max_mensagens = max_mensagens
         self._monotonico = monotonico
         self._indisponivel_ate = 0.0
+        self._criacoes = {"ok": 0, "falha": 0}
         self.historico: list[dict] = []
         self._ferramentas = _esquemas_locais()
         self.tr.observar(lambda _idioma: self.reiniciar())  # trocou de idioma: conversa nova
@@ -266,6 +286,7 @@ class ModeloOllama:
         agora = self.tr("claude.agora", agora=descrever_agora(self.relogio(), self.tr.idioma))
         self.historico.append({"role": "user", "content": f"{agora}\n{fala}"})
         ferramentas = self._ferramentas_para(fala)
+        self._criacoes = {"ok": 0, "falha": 0}  # tarefas e lembretes criados (ou não) nesta fala
         progresso = {"falou": False, "concluida": False}
         if ferramentas:
             # No processador, um pedido com ferramentas leva dezenas de segundos: avisa em vez de ficar mudo
@@ -311,6 +332,9 @@ class ModeloOllama:
             if not chamadas:
                 if ferramentas:
                     falado = _MARKDOWN.sub("", texto).strip() or self.tr("claude.perdido")
+                    if self._criacoes["falha"] and not self._criacoes["ok"]:
+                        # Modelos pequenos dizem "lembrete criado" mesmo quando a ferramenta recusou
+                        falado = self.tr("local.nao_criou")
                     progresso["falou"] = True
                     yield falado
                 progresso["concluida"] = True
@@ -342,9 +366,11 @@ class ModeloOllama:
             saida: dict = {"erro": f"Ferramenta indisponível: {nome}. Responda sem ela."}
         else:
             try:
-                saida = self.executor.executar(nome, _coagir(funcao.get("arguments")))
+                saida = self.executor.executar(nome, _coagir(funcao.get("arguments"), self.relogio()))
             except (EntradaInvalida, ValueError) as e:  # o modelo vê o erro e pode corrigir a chamada
                 saida = {"erro": str(e)}
+        if nome in CRIACOES:
+            self._criacoes["falha" if "erro" in saida else "ok"] += 1
         log.debug("Ferramenta local %s -> %s", nome, saida)
         return {"role": "tool", "tool_name": nome, "content": json.dumps(saida, ensure_ascii=False)}
 

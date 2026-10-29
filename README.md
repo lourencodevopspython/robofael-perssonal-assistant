@@ -48,8 +48,8 @@ a boca acompanha a voz e o tom de voz é ajustado ao do usuário.
 O instalador padrão é um pacote `.deb`, feito para o **Ubuntu 24.04**. Ele já traz as dependências Python e o modelo de voz, então a instalação funciona **sem internet**.
 
 ```bash
-make deb                                           # gera dist/robofael_3.9.0_amd64.deb
-sudo apt install ./dist/robofael_3.9.0_amd64.deb   # o apt instala Python, Tk, PortAudio...
+make deb                                           # gera dist/robofael_3.9.1_amd64.deb
+sudo apt install ./dist/robofael_3.9.1_amd64.deb   # o apt instala Python, Tk, PortAudio...
 ```
 
 Depois disso:

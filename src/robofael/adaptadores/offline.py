@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterator
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from robofael.aplicacao.memoria import Memoria
 from robofael.aplicacao.programas import ServicoProgramas
@@ -13,17 +13,33 @@ from robofael.dominio.agenda import Agenda, TarefaNaoEncontrada
 from robofael.dominio.linguagem import pergunta_historico
 from robofael.dominio.periodos import Periodo, interpretar_periodo
 from robofael.dominio.programas import extrair_pedido
+from robofael.dominio.quando import interpretar_quando, sem_trechos
 from robofael.i18n import Tradutor
 
-_ANOTAR = re.compile(r"(?:adicionar|adiciona|anota|anotar|a nota|nova|add(?: a)?(?: new)?|new|create(?: a)?)"
-                     r" (?:tarefa|task):?\s*(.+)", re.I)
+_ANOTAR = re.compile(r"\b(?:adicionar|adiciona|adicione|anota|anotar|anote|a nota|nova|cria|criar|crie|"
+                     r"add|new|create|make|put)(?: uma| um| a| an| new| nova| novo)* (?:tarefa|task)\b"
+                     r"(?: to my list| on my list| na lista| na minha lista)?[:,]?\s*(.+)", re.I)
+_SOBRA_TAREFA = re.compile(r"^(?:to|called|named|chamada|:)\s+", re.I)  # "add a task to buy milk"
 _CONCLUIR = re.compile(r"(?:conclu\w*|terminei|feita|complete[ds]?|finish(?:ed)?|done with|mark)"
                        r" (?:a |the )?(?:tarefa|task) (?:number |n[uú]mero )?(\d+)", re.I)
-_LEMBRAR = re.compile(r"(?:lembr[\w-]* (?:daqui a |em )|remind me in |reminder in )(\d+) (?:minutos?|minutes?)"
-                      r"(?: de| para| to| about| that)?\s*(.*)", re.I)
+_LEMBRETE = re.compile(
+    r"\b(?:remind(?: me)?|set (?:a |an )?(?:reminder|alarm)|(?:create|add|make|new) (?:a )?reminder|"
+    r"me lembr[ae]r?|lembr[ae]-me|me avis[ae]r?|(?:cri[ae]r?|novo|adiciona) (?:um )?lembrete)\b"
+    r"|^\s*(?:um |a |novo |new )?(?:lembrete|reminder)\b", re.I)  # a palavra solta só no começo da frase
+_PERGUNTA = re.compile(
+    r"\?\s*$|^\s*(?:tenho|tem|quais|qual|quantos|existe|h[áa]|do i|have i|are there|is there|what|which|any)\b",
+    re.I)  # "tenho algum lembrete para amanhã?" é consulta, não pedido
+_CONECTIVOS_LEMBRETE = re.compile(r"^(?:to|about|that|of|for|me|de|da|do|que|para|pra|sobre|:|,|-)\s*", re.I)
 _TAREFAS = re.compile(r"tarefa|\btasks?\b|to.?do", re.I)
 _HORA = re.compile(r"\bhoras?\b|\bwhat time\b|\btime is it\b", re.I)
 _DATA = re.compile(r"\b(dia|data)\b|\bwhat day\b|\bthe date\b|\btoday'?s date\b", re.I)
+
+
+def descrever_momento(momento: datetime, agora: datetime, tr: Tradutor) -> str:
+    """'hoje às 15:30', 'amanhã às 09:00', 'em 05/11/2026 às 10:00' (no idioma do tradutor)."""
+    dias = (momento.date() - agora.date()).days
+    chave = {0: "off.quando_hoje", 1: "off.quando_amanha"}.get(dias, "off.quando_data")
+    return tr(chave, h=momento, data=tr.data(momento))
 
 
 Intencao = Callable[[str, datetime], str | None]  # devolve a resposta, ou None se não é com ela
@@ -82,7 +98,8 @@ class ModeloOffline:
     def _anotar(self, f: str, _agora: datetime) -> str | None:
         if not (m := _ANOTAR.search(f)):
             return None
-        return self.tr("off.anotei", texto=self.agenda.adicionar_tarefa(m.group(1)).texto)
+        texto = _SOBRA_TAREFA.sub("", m.group(1).strip()).strip(" .") or m.group(1)
+        return self.tr("off.anotei", texto=self.agenda.adicionar_tarefa(texto).texto)
 
     def _concluir(self, f: str, _agora: datetime) -> str | None:
         if not (m := _CONCLUIR.search(f)):
@@ -93,11 +110,19 @@ class ModeloOffline:
             return self.tr("off.tarefa_nao_achada")
 
     def _lembrar(self, f: str, agora: datetime) -> str | None:
-        if not (m := _LEMBRAR.search(f)):
+        """"remind me to drink water in 5 minutes", "me lembra amanhã às 9 da reunião": o horário pode vir
+        em qualquer posição. Sem horário reconhecível, deixa a fala para o modelo de linguagem."""
+        if _PERGUNTA.search(f) or not (gatilho := _LEMBRETE.search(f)) or not (quando := interpretar_quando(f, agora)):
             return None
-        tr, minutos = self.tr, int(m.group(1))
-        self.agenda.criar_lembrete(m.group(2) or tr("off.lembrete_padrao"), agora + timedelta(minutes=minutos))
-        return tr("off.lembrete_criado", n=minutos, minutos=tr.plural(minutos, "un.minuto"))
+        texto = sem_trechos(f, (gatilho.span(), *quando.trechos))
+        while (limpo := _CONECTIVOS_LEMBRETE.sub("", texto, count=1).strip()) != texto:
+            texto = limpo
+        tr = self.tr
+        self.agenda.criar_lembrete(texto.strip(" .!?") or tr("off.lembrete_padrao"), quando.momento)
+        if quando.relativo_min is not None and quando.relativo_min < 60:
+            n = quando.relativo_min
+            return tr("off.lembrete_criado", n=n, minutos=tr.plural(n, "un.minuto"))
+        return tr("off.lembrete_criado_em", quando=descrever_momento(quando.momento, agora, tr))
 
     def _abrir_programa(self, f: str, _agora: datetime) -> str | None:
         if self.programas is None or not (pedido := extrair_pedido(f)):

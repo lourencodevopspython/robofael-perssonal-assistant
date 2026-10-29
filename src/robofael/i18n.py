@@ -239,6 +239,10 @@ CATALOGO: dict[str, dict[Idioma, str | tuple[str, str]]] = {
     "off.data": {PT: "Hoje é {dia}, {data}.", EN: "Today is {dia}, {data}."},
     "off.sem_historico": {PT: "Ainda não tenho acesso ao histórico.", EN: "I don't have access to the history yet."},
     "off.lembrete_padrao": {PT: "seu lembrete", EN: "your reminder"},
+    "off.lembrete_criado_em": {PT: "Combinado, te lembro {quando}.", EN: "Okay, I'll remind you {quando}."},
+    "off.quando_hoje": {PT: "hoje às {h:%H:%M}", EN: "today at {h:%I:%M %p}"},
+    "off.quando_amanha": {PT: "amanhã às {h:%H:%M}", EN: "tomorrow at {h:%I:%M %p}"},
+    "off.quando_data": {PT: "em {data} às {h:%H:%M}", EN: "on {data} at {h:%I:%M %p}"},
     # ---------- memória ("o que eu fiz") ----------
     "mem.nenhuma": {PT: "Não encontrei tarefas concluídas {quando}.",
                     EN: "I didn't find any completed tasks {quando}."},
@@ -292,6 +296,10 @@ informado na mensagem.""",
 Always answer in American English, in at most two short sentences, with no markdown, lists, emojis or URLs.
 Only use a tool when the request is clearly about tasks, reminders or what was done; never make up the \
 agenda. For reminders, work out the date and time from the current time given in the message.""",
+    },
+    "local.nao_criou": {
+        PT: "Não consegui criar isso. Tente, por exemplo: me lembra daqui a 10 minutos de beber água.",
+        EN: "I couldn't create that. Try, for example: remind me in 10 minutes to drink water.",
     },
     "local.aguarde": {PT: "Só um instante.", EN: "One moment."},
     "local.problema": {PT: "Meu modelo local teve um problema agora. Pode repetir?",

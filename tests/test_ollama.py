@@ -91,7 +91,7 @@ def test_conversa_vai_ao_modelo_sem_ferramentas_e_em_streaming(montar):
 def test_pedido_de_agenda_livre_usa_so_as_ferramentas_seguras(montar, agenda):
     modelo, cliente = montar(chamada("criar_lembrete", {"texto": "reunião com o time", "quando": "2026-10-24T09:00"}),
                              texto("Combinado, te lembro amanhã às 9."))
-    resposta = falar(modelo, "amanhã às 9 me lembra da reunião com o time")
+    resposta = falar(modelo, "me lembra da reunião com o time no fim do mês")  # sem horário: vai ao modelo
     assert resposta == "Só um instante. Combinado, te lembro amanhã às 9."
     oferecidas = {f["function"]["name"] for f in cliente.pedidos[0]["tools"]}
     assert "criar_lembrete" in oferecidas and oferecidas <= FERRAMENTAS_LOCAIS  # só as seguras...
@@ -124,7 +124,7 @@ def test_chamada_escrita_como_json_no_texto_e_executada_e_nao_falada(montar, age
     """O llama3.2 às vezes devolve a chamada como texto, em vez de tool_calls."""
     json_falado = '{"name": "criar_lembrete", "parameters": {"texto": "dentista", "quando": "2026-10-24T15:00"}}'
     modelo, cliente = montar(texto(json_falado), texto("Pronto, lembrete criado."))
-    pedacos = list(modelo.responder("amanhã às 15h me lembra do dentista"))
+    pedacos = list(modelo.responder("me lembra do dentista na semana que vem"))
     assert pedacos == ["Só um instante. ", "Pronto, lembrete criado."]  # aviso já; a resposta inteira no fim
     assert [l.texto for l in agenda.proximos_lembretes()] == ["dentista"]
     assert cliente.pedidos[0]["options"]["temperature"] == 0  # JSON estável
@@ -132,7 +132,7 @@ def test_chamada_escrita_como_json_no_texto_e_executada_e_nao_falada(montar, age
 
 def test_json_quebrado_nunca_e_lido_em_voz_alta(montar, agenda):
     modelo, _ = montar(texto('{"name": "criar_lembrete", "parameters": {"quando": "am{'))
-    assert falar(modelo, "amanhã às 9 me lembra da reunião") == "Só um instante. " + Tradutor()("claude.perdido")
+    assert falar(modelo, "me lembra da reunião no fim do mês") == "Só um instante. " + Tradutor()("claude.perdido")
     assert agenda.proximos_lembretes() == []
 
 
@@ -302,3 +302,20 @@ def test_escrever_documento_usa_instrucoes_e_limite_proprios_sem_mexer_no_histor
     assert pedido["options"] == OPCOES_DOCUMENTO and OPCOES_DOCUMENTO["num_predict"] > OPCOES["num_predict"]
     assert "documentos" in pedido["messages"][0]["content"] and "tools" not in pedido
     assert modelo.historico == []
+
+
+def test_data_em_linguagem_natural_na_ferramenta_e_convertida(montar, agenda):
+    """Em inglês o llama3.2 mandou quando='tomorrow 09:00' e o lembrete não era criado."""
+    modelo, _ = montar(chamada("criar_lembrete", {"texto": ["team", "meeting"], "quando": "tomorrow 09:00"}),
+                       texto("Done."))
+    falar(modelo, "me lembra da reunião do time no fim do mês")
+    criados = [(l.texto, l.quando) for l in agenda.proximos_lembretes()]
+    assert criados == [("team meeting", datetime(2026, 10, 24, 9, 0))]
+
+
+def test_criacao_recusada_nao_vira_mentira(montar, agenda):
+    """O modelo dizia "I've set a reminder" mesmo com a ferramenta recusando a entrada."""
+    modelo, _ = montar(chamada("criar_lembrete", {"texto": "x", "quando": "someday"}),
+                       texto("I've set a reminder for you."))
+    resposta = falar(modelo, "me lembra disso no fim do mês")
+    assert resposta == "Só um instante. " + Tradutor()("local.nao_criou") and agenda.proximos_lembretes() == []

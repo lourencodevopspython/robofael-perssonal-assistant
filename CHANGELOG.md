@@ -2,6 +2,25 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões seguem [SemVer](https://semver.org/lang/pt-BR/).
 
+## [3.9.1] — 2026-10-29
+
+### Corrigido
+- **Tarefas e lembretes em inglês não eram criados.** Com o modelo local, frases como "remind me to drink
+  water in 5 minutes" ou "remind me tomorrow at 9 about the meeting" iam para o llama3.2, que chamava a
+  ferramenta com dados inválidos (`quando="tomorrow 09:00"`) e, mesmo com a criação recusada, respondia
+  "I've set a reminder".
+  - Novo intérprete de tempo (`dominio/quando.py`), em português e inglês: "in 5 minutes", "in five minutes",
+    "in an hour", "in half an hour", "at 3 pm", "tomorrow at 9", "tonight at 8", "next friday", "on monday at 3",
+    "daqui a meia hora", "amanhã às 9h30", "às 3 da tarde", "na sexta que vem às 10h". Sem am/pm, 1–7 h é
+    tarde/noite; horário que já passou vira amanhã; dia sem horário vira 9h.
+  - O modo offline cria lembretes com o horário em qualquer posição da frase ("remind me to X in 5 minutes")
+    e responde quando será ("tomorrow at 09:00 AM", "amanhã às 09:30"); perguntas ("tenho algum lembrete
+    amanhã?") nunca criam lembretes.
+  - Tarefas: "make/create/add a task to buy milk" cria "buy milk" (sem o "to").
+  - Modelo local: datas em linguagem natural e textos em lista são convertidos antes de validar; se nenhuma
+    criação der certo, o assistente diz que não conseguiu, em vez de repetir que criou.
+- `tests/test_quando.py` e novos testes no modo offline e no modelo local.
+
 ## [3.9.0] — 2026-10-29
 
 ### Adicionado
