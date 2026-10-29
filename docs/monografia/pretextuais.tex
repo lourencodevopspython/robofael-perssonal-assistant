@@ -1,0 +1,205 @@
+% =============================================================================
+%  Elementos pré-textuais (NBR 14724): capa, folha de rosto, folha de aprovação,
+%  resumo, abstract, listas e sumário. Não são paginados, mas a contagem começa
+%  na folha de rosto.
+% =============================================================================
+
+% ---------- Capa (não é contada) ----------
+\begin{titlepage}
+\begin{center}
+\singlespacing
+\textbf{\MakeUppercase{\instituicao}}\\
+\textbf{\MakeUppercase{\unidade}}\\
+\textbf{\MakeUppercase{\curso}}
+
+\vspace*{3.2cm}
+\textbf{\MakeUppercase{\autor}}
+
+\vfill
+\textbf{\titulo:} \subtitulo
+
+\vfill
+\local\\
+\ano
+\end{center}
+\end{titlepage}
+
+% ---------- Folha de rosto (página 1, não numerada) ----------
+\setcounter{page}{1}
+\begin{center}
+\singlespacing
+\textbf{\MakeUppercase{\autor}}
+
+\vspace*{5cm}
+\textbf{\titulo:} \subtitulo
+\end{center}
+
+\vspace{2.5cm}
+\noindent\hspace{0.45\textwidth}\begin{minipage}{0.55\textwidth}
+\singlespacing\small
+Trabalho de Conclusão de Curso apresentado ao \curso{} da \instituicao, como requisito parcial
+para a obtenção do título de \grau.
+
+\vspace{12pt}
+Orientador(a): \orientacao.
+\end{minipage}
+
+\vfill
+\begin{center}
+\local\\
+\ano
+\end{center}
+
+% ---------- Folha de aprovação ----------
+\clearpage
+\begin{center}
+\singlespacing
+\textbf{\MakeUppercase{\autor}}
+
+\vspace{1.5cm}
+\textbf{\titulo:} \subtitulo
+\end{center}
+
+\vspace{1cm}
+\noindent\hspace{0.45\textwidth}\begin{minipage}{0.55\textwidth}
+\singlespacing\small
+Trabalho de Conclusão de Curso apresentado ao \curso{} da \instituicao, como requisito parcial
+para a obtenção do título de \grau.
+\end{minipage}
+
+\vspace{1cm}
+\noindent Aprovado em: \underline{\hspace{1cm}} / \underline{\hspace{1cm}} / \underline{\hspace{1.6cm}}.
+
+\vspace{1cm}
+\begin{center}
+\textbf{BANCA EXAMINADORA}
+
+\vspace{1.6cm}
+\rule{10cm}{0.4pt}\\
+\orientacao{} (Orientador(a))\\
+\instituicao
+
+\vspace{1.4cm}
+\rule{10cm}{0.4pt}\\
+{[Nome completo do(a) avaliador(a)]}\\
+{[Instituição]}
+
+\vspace{1.4cm}
+\rule{10cm}{0.4pt}\\
+{[Nome completo do(a) avaliador(a)]}\\
+{[Instituição]}
+\end{center}
+
+% ---------- Resumo na língua vernácula (NBR 6028) ----------
+\titulosemnumero{Resumo}
+\noindent
+Este trabalho apresenta o projeto, a construção e a validação do Robofael, um assistente pessoal de
+atividades diárias para computadores com Linux que conversa por voz e é representado por um avatar
+animado gerado a partir de fotografias do próprio usuário. O sistema ouve comandos falados ou
+digitados, responde com voz neural ajustada ao tom e ao ritmo da voz do usuário, gerencia tarefas e
+lembretes, mantém uma memória de longo prazo auditável capaz de responder o que foi feito em um dia ou
+em uma semana, abre programas instalados e funciona em português e em inglês. A ativação sem as mãos
+ocorre pela frase “ok Fael”, reconhecida localmente, de modo que o áudio do ambiente não deixa o
+computador. Quando disponível, um modelo de linguagem de grande porte (Claude) interpreta pedidos em
+linguagem natural e opera a agenda por meio de ferramentas; sem ele, um modelo local servido pelo Ollama
+conversa com ferramentas restritas e, sem nenhum dos dois, um interpretador de intenções local mantém as
+funções essenciais. O desenvolvimento seguiu um processo iterativo e incremental,
+conduzido por pedidos sucessivos e apoiado por um agente de programação baseado em inteligência
+artificial, em vinte incrementos registrados em versionamento semântico. A solução adota arquitetura
+hexagonal, pipeline de fala em fluxo contínuo, máquina de estados explícita, barramento de eventos
+para isolar a interface gráfica e persistência em SQLite com histórico somente de acréscimo protegido
+por cadeia de resumos criptográficos SHA-256. Ao final, o código foi revisado de ponta a ponta à luz
+dos princípios SOLID e das práticas de código limpo: responsabilidades foram separadas, despachos
+condicionais foram convertidos em tabelas extensíveis e as dependências passaram a apontar apenas
+para contratos. As regras de arquitetura tornaram-se verificáveis por testes automatizados. Um
+incremento guiado por medições reduziu o consumo de processamento em repouso de 29\% para 5\% de um
+núcleo, levou a janela a aparecer em 0,6 s e eliminou pausas artificiais entre as frases faladas. A
+validação contou com 643 testes automatizados, cobertura de 87\% das linhas e ramificações,
+verificação estática de tipos e de estilo, complexidade ciclomática máxima igual a 10 por função e um
+instalador para Ubuntu testado em ambiente isolado. Os resultados indicam que é viável construir um
+assistente de voz responsivo, privado e de fácil manutenção com componentes livres e serviços de
+linguagem, e que a verificação automática das regras de projeto preserva a qualidade da arquitetura
+ao longo da evolução do software.
+
+\vspace{12pt}
+\noindent\textbf{Palavras-chave:} assistente virtual; reconhecimento de fala; arquitetura hexagonal;
+princípios SOLID; código limpo.
+
+% ---------- Resumo em língua estrangeira ----------
+\titulosemnumero{Abstract}
+\begin{idiomaestrangeiro}
+\noindent
+This work presents the design, construction and validation of Robofael, a personal daily-activity
+assistant for Linux computers that talks by voice and is represented by an animated avatar generated
+from photographs of its own user. The system listens to spoken or typed commands, answers with a neural
+voice tuned to the pitch and pace of the user's voice, manages tasks and reminders, keeps an auditable
+long-term memory able to answer what was done on a given day or week, opens installed programs and works
+in Portuguese and English. Hands-free activation happens through the phrase “ok Fael”, recognized
+locally, so ambient audio never leaves the computer. When available, a large language model (Claude)
+interprets natural-language requests and operates the agenda through tools; without it, a local model
+served by Ollama talks with restricted tools and, without either, a local intent interpreter keeps the
+essential functions. Development followed an iterative and incremental process,
+driven by successive requests and supported by an artificial-intelligence coding agent, in twenty
+increments tracked with semantic versioning. The solution adopts a hexagonal architecture, a streaming
+speech pipeline, an explicit state machine, an event bus that isolates the graphical interface, and
+SQLite persistence with an append-only history protected by a SHA-256 hash chain. Finally, the code was
+reviewed end to end in the light of the SOLID principles and clean-code practices: responsibilities were
+separated, conditional dispatch was replaced with extensible tables, dependencies were made to point only
+to contracts, and architecture rules became verifiable through automated tests. A measurement-driven
+increment cut idle processor usage from 29\% to 5\% of one core, made the window appear in 0.6 s and
+removed artificial pauses between spoken sentences. Validation relied on
+643 automated tests, 87\% line and branch coverage, static type and style checking, a maximum cyclomatic
+complexity of 10 per function, and an Ubuntu installer tested in an isolated environment. The results
+indicate that it is feasible to build a responsive, private and maintainable voice assistant from free
+components and language services, and that automatically checking design rules preserves architectural
+quality as the software evolves.
+
+\vspace{12pt}
+\noindent\textbf{Keywords:} virtual assistant; speech recognition; hexagonal architecture; SOLID
+principles; clean code.
+\end{idiomaestrangeiro}
+
+% ---------- Listas ----------
+\clearpage
+\listadequadros
+\clearpage
+\listadetabelas
+
+% ---------- Lista de abreviaturas e siglas ----------
+\titulosemnumero{Lista de abreviaturas e siglas}
+\begin{singlespace}
+\noindent
+\begin{tabular}{@{}p{2.6cm}p{12cm}@{}}
+ABNT   & Associação Brasileira de Normas Técnicas \\
+AGC    & \en{Automatic Gain Control} (controle automático de ganho) \\
+API    & \en{Application Programming Interface} (interface de programação de aplicações) \\
+CI     & \en{Continuous Integration} (integração contínua) \\
+DIP    & \en{Dependency Inversion Principle} (princípio da inversão de dependência) \\
+DSP    & \en{Digital Signal Processing} (processamento digital de sinais) \\
+FPS    & Quadros por segundo \\
+GIL    & \en{Global Interpreter Lock} do interpretador CPython \\
+GUI    & \en{Graphical User Interface} (interface gráfica do usuário) \\
+ISP    & \en{Interface Segregation Principle} (princípio da segregação de interfaces) \\
+JSON   & \en{JavaScript Object Notation} \\
+LLM    & \en{Large Language Model} (modelo de linguagem de grande porte) \\
+LRU    & \en{Least Recently Used} (menos recentemente usado) \\
+LSP    & \en{Liskov Substitution Principle} (princípio da substituição de Liskov) \\
+OCP    & \en{Open-Closed Principle} (princípio aberto/fechado) \\
+PCM    & \en{Pulse-Code Modulation} (modulação por código de pulso) \\
+RF     & Requisito funcional \\
+RNF    & Requisito não funcional \\
+SHA    & \en{Secure Hash Algorithm} \\
+SOLID  & Acrônimo dos cinco princípios de projeto orientado a objetos (SRP, OCP, LSP, ISP, DIP) \\
+SQL    & \en{Structured Query Language} \\
+SRP    & \en{Single Responsibility Principle} (princípio da responsabilidade única) \\
+STT    & \en{Speech-to-Text} (reconhecimento de fala) \\
+TTS    & \en{Text-to-Speech} (síntese de fala) \\
+UI     & \en{User Interface} (interface do usuário) \\
+VAD    & \en{Voice Activity Detection} (detecção de atividade de voz) \\
+XDG    & Especificações de área de trabalho do projeto freedesktop.org \\
+\end{tabular}
+\end{singlespace}
+
+% ---------- Sumário ----------
+\clearpage
+\tableofcontents

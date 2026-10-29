@@ -1,0 +1,9 @@
+#!/bin/sh
+# Lançador do Robofael: programa em /opt/robofael, dados de cada usuário na pasta pessoal (XDG).
+# EUROBO_* (nome antigo, até a 3.4.0) ainda vale quando a ROBOFAEL_* correspondente não está definida.
+PREFIXO="${ROBOFAEL_PREFIXO:-/opt/robofael}"
+export ROBOFAEL_ASSETS="${ROBOFAEL_ASSETS:-${EUROBO_ASSETS:-$PREFIXO/assets}}"
+export ROBOFAEL_MODELOS="${ROBOFAEL_MODELOS:-${EUROBO_MODELOS:-$PREFIXO/modelos}}"
+export ROBOFAEL_DADOS="${ROBOFAEL_DADOS:-${EUROBO_DADOS:-${XDG_DATA_HOME:-$HOME/.local/share}/robofael}}"
+export ROBOFAEL_CACHE="${ROBOFAEL_CACHE:-${EUROBO_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/robofael}}"
+exec "$PREFIXO/venv/bin/python" -m @MODULO@ "$@"

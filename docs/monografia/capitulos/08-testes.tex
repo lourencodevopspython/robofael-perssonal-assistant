@@ -1,0 +1,184 @@
+\chapter{Testes e validação}
+
+Este capítulo apresenta a estratégia de testes, as suítes que compõem a validação automatizada, os
+testes de arquitetura que verificam os princípios de projeto, o processo de integração contínua e os
+procedimentos de validação manual.
+
+\section{Estratégia}
+
+A estratégia segue a pirâmide de testes \cite{cohn2009}. A base é formada por testes unitários rápidos
+das regras de domínio, das políticas de aplicação e do processamento de sinais. O nível intermediário
+reúne testes de integração dos adaptadores com dublês das bibliotecas externas e do banco SQLite real
+em arquivo temporário. No topo ficam poucos testes que abrem a janela Tk real, marcados como lentos e
+executados com servidor gráfico virtual na integração contínua.
+
+Três decisões de projeto tornaram essa estratégia viável. A primeira é a arquitetura hexagonal: todo
+serviço externo (modelo de linguagem, reconhecedores, sintetizador, reprodutor, lançador de programas)
+é acessado por uma porta e pode ser substituído por um dublê \cite{meszaros2007}. A segunda é a injeção
+do relógio, que torna determinísticos os testes de lembretes e de períodos. A terceira é a
+reprodução simulada com duração configurável, que permite provar propriedades temporais do pipeline,
+como a de que a primeira frase começa a tocar antes de o modelo terminar a resposta.
+
+\section{Dublês de teste}
+
+O módulo comum de testes oferece dublês para cada porta:
+\begin{enumerate}[label=\alph*)]
+  \item modelos roteirizados, que devolvem pedaços de texto com atraso controlado;
+  \item um cliente falso do modelo Claude, que reproduz o protocolo de transmissão em fluxo contínuo com
+        blocos de texto e de ferramenta;
+  \item sintetizadores que registram os textos e podem falhar sob demanda;
+  \item reprodutores que registram as faixas tocadas e acionam ganchos durante a reprodução;
+  \item reconhecedores com falas roteirizadas e transcrições opcionais;
+  \item detectores de ativação que devolvem ativações ou falhas roteirizadas e depois aguardam o
+        cancelamento;
+  \item lançadores de programas vazios ou com listas controladas;
+  \item um servidor HTTP falso do Ollama e catálogos de modelos roteirizados, que respondem com listas
+        ou com falhas (sem chave, sem conexão, servidor fora do ar);
+  \item listas de microfones e estados de inicialização controlados, sem depender do hardware.
+\end{enumerate}
+Uma fixture automática aponta a pasta pessoal e a pasta de configuração para diretórios temporários
+em todos os testes, de modo que nenhum deles possa criar atalhos de inicialização ou comandos na pasta
+real do usuário.
+Também são oferecidos geradores de áudio sintético, como senoides em frequências conhecidas e arquivos
+WAV temporários, para validar a análise de tom e de envelope.
+
+\section{Suítes de teste}
+
+O Quadro~\ref{qua:suites} descreve as suítes e o número de casos de teste de cada uma, contando as
+variações parametrizadas.
+
+\begin{singlespace}
+\legendaquadro{Suítes de teste automatizado}\label{qua:suites}
+\small
+\begin{tabularx}{\textwidth}{|P{4.2cm}|C{1.3cm}|L|}
+\hline
+\textbf{Suíte} & \textbf{Casos} & \textbf{O que garante} \\ \hline
+\endfirsthead
+\hline
+\textbf{Suíte} & \textbf{Casos} & \textbf{O que garante} \\ \hline
+\endhead
+\cod{test_i18n} & 190 & Catálogo completo e com os mesmos campos nas duas línguas; comandos, períodos e respostas em inglês; troca ao vivo; precedência da configuração \\ \hline
+\cod{test_ativacao} & 79 & Gramática de “ok Fael” e busca fonética com saídas reais do reconhecedor local; frases parecidas que não podem disparar; extração do comando com saídas reais do reconhecedor remoto; vigia liberando o microfone; desligamento após falhas \\ \hline
+\cod{test_memoria} & 41 & Dezenove expressões de período, intenção “o que eu fiz”, resultado líquido e respostas \\ \hline
+\cod{test_programas} & 29 & Leitura de entradas \cod{.desktop}, extração do pedido, ranqueamento, sinônimos, ambiguidade, abertura sem interpretador de comandos e prioridade da agenda \\ \hline
+\cod{test_ollama} & 24 & Respostas em camadas, ferramentas seguras, chamadas escritas como texto, queda para o modo offline, interrupção, histórico, idioma, cliente HTTP contra servidor falso e escolha do cérebro \\ \hline
+\cod{test_sqlite} & 18 & Esquema versionado, transação conjunta de estado e histórico, gatilhos de somente acréscimo, detecção de quatro tipos de adulteração, consulta por período, concorrência, migração e preferências \\ \hline
+\cod{test_agenda} & 18 & Regras da agenda e transações (persiste e notifica somente em caso de sucesso) \\ \hline
+\cod{test_analise_audio} & 23 & Estimativa de tom com erro de até 2\%, envelope de volume e timbre e corte do silêncio das pontas (sem cortar consoantes fracas) \\ \hline
+\cod{test_orquestrador} & 17 & Prova do pipeline, interrupção, modo contínuo, anúncios em fila, falhas de modelo, síntese e microfone, corrida do cancelamento e pedidos digitados durante a fala ou a escuta \\ \hline
+\cod{test_modelo_offline} & 15 & Comandos, plural, lembretes relativos e despedida \\ \hline
+\cod{test_animacao} & 15 & Suavização independente da taxa de quadros e seleção do quadro da boca \\ \hline
+\cod{test_modelo_claude} & 14 & Transmissão real do texto, laço de ferramentas, limite de tamanho, recusa, erros da API, descarte da rodada e limite do histórico \\ \hline
+\cod{test_arquitetura} & 15 & Regra de dependência entre camadas e princípios SOLID (Seção~\ref{sec:testes-arquitetura}) \\ \hline
+\cod{test_configuracoes} & 15 & Conversões de tom e ritmo, precedência das preferências, janela de tamanho fixo e diálogo de configurações, inclusive microfone, inicialização, modelo em uso, mudança e backup do banco \\ \hline
+\cod{test_microfone_inicializacao} & 14 & Lista de microfones sem monitores, variável de escolha restrita à abertura, rótulos, reabertura da escuta passiva, atalho de sessão e comandos no terminal sem apagar arquivos de outra origem \\ \hline
+\cod{test_banco_e_modelos} & 13 & Backup conferido, mudança do banco com gravações antes e depois, recusa de sobrescrever, banco ausente na abertura, catálogos do Claude e do Ollama e texto da lista de modelos \\ \hline
+\cod{test_perfil_voz} & 12 & Criação, leitura e tolerância a arquivos inexistentes ou corrompidos \\ \hline
+\cod{test_ferramentas} & 9 & Esquemas e validação de entradas (tipos, campos extras, booleano diferente de inteiro) \\ \hline
+\cod{test_avatar} & 9 & Busto centralizado, camisa, tamanho uniforme dos quadros e cache \\ \hline
+\cod{test_vad}, \cod{test_estados_barramento}, \cod{test_frases} & 23 & Detecção de fala, transições de estado, entrega de eventos entre threads e divisão de frases \\ \hline
+\cod{test_sessao_pipeline_vigia} & 8 & Pipeline e vigia isolados, síntese paralela com ordem preservada e aplicação das preferências \\ \hline
+\cod{test_renderizacao} & 8 & Canvas diferencial, fila de trabalho com orçamento, laço de quadros adaptativo, halos opacos e regressão de desempenho do palco em repouso \\ \hline
+\cod{test_ganho}, \cod{test_configuracao_tema}, \cod{test_adaptadores_voz} & 21 & Ganho automático, configuração (inclusive os nomes antigos das variáveis) e tema, cache LRU de voz e reprodutor com mixer real \\ \hline
+\cod{test_agendador}, \cod{test_repositorio_json}, \cod{test_bootstrap_ui} & 13 & Lembrete no horário exato, formato legado, composição, queda para o modo offline e janela Tk real \\ \hline
+\textbf{Total} & \textbf{643} & \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026), a partir da coleta do pytest.}
+\end{singlespace}
+
+\section{Testes de arquitetura}\label{sec:testes-arquitetura}
+
+Inspirados nas funções de aptidão arquitetural de \textcite{ford2017}, os testes de arquitetura
+transformam as regras de projeto em verificações executáveis. Eles estão no arquivo
+\cod{tests/test_arquitetura.py} e verificam:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{regra de dependência}: a árvore sintática de cada módulo é analisada, todas as
+        importações internas são extraídas e cada uma é comparada com uma tabela que declara, para cada
+        camada, as camadas que ela pode importar; qualquer violação é relatada com arquivo, linha e
+        sentido da dependência;
+  \item \textbf{cobertura das regras}: toda camada existente no pacote precisa ter uma regra declarada,
+        para que uma camada nova não escape da verificação;
+  \item \textbf{pureza do núcleo}: o domínio e as portas não podem importar bibliotecas de
+        infraestrutura (banco de dados, interface gráfica, processamento numérico, áudio, rede, modelo de
+        linguagem nem execução de processos);
+  \item \textbf{LSP}: o banco SQLite precisa oferecer todos os métodos de todos os contratos de
+        persistência, e o repositório legado não pode ter a assinatura que promete guardar o histórico;
+  \item \textbf{DIP}: a agenda precisa funcionar com um repositório em memória escrito no próprio teste,
+        sem banco de dados;
+  \item \textbf{OCP}: toda ferramenta declarada ao modelo precisa ter uma ação registrada e vice-versa, e
+        uma intenção nova acrescentada à cadeia do modo offline precisa funcionar sem alterar o código
+        existente;
+  \item \textbf{SRP}: os métodos do pipeline e da vigia não podem voltar ao orquestrador, e as políticas
+        da sessão não podem voltar à raiz de composição.
+\end{enumerate}
+
+\section{Análise estática e integração contínua}
+
+O comando \cod{make verificar} executa, em sequência, a análise estática (ruff), a verificação de tipos
+(mypy) e a suíte completa (pytest). O mesmo conjunto é executado pelos ganchos de \en{pre-commit} e
+pela integração contínua no GitHub Actions, em Python 3.10 e 3.12, com o servidor gráfico virtual Xvfb
+para os testes de interface. A medição de cobertura falha se o total ficar abaixo de 80\%.
+
+\section{Cobertura}
+
+A cobertura combinada de linhas e ramificações foi de 86,6\% sobre 4.694 comandos. A
+Tabela~\ref{tab:cobertura} apresenta a cobertura por camada.
+
+\begin{singlespace}
+\legendatabela{Cobertura de testes por camada (linhas e ramificações)}\label{tab:cobertura}
+\small
+\begin{tabularx}{\textwidth}{LC{2.6cm}C{3.2cm}}
+\toprule
+\textbf{Camada} & \textbf{Comandos} & \textbf{Cobertura (\%)} \\ \midrule
+\endfirsthead
+\toprule
+\textbf{Camada} & \textbf{Comandos} & \textbf{Cobertura (\%)} \\ \midrule
+\endhead
+Portas & 85 & 100,0 \\
+Internacionalização & 68 & 98,7 \\
+Domínio & 551 & 98,2 \\
+Aplicação & 758 & 95,5 \\
+Avatar & 290 & 95,2 \\
+Configuração & 117 & 93,8 \\
+Áudio & 260 & 90,8 \\
+Adaptadores & 1.297 & 82,1 \\
+Apresentação & 1.130 & 76,0 \\
+Raiz de composição & 136 & 75,0 \\ \midrule
+\textbf{Total} & \textbf{4.694} & \textbf{86,6} \\
+\bottomrule
+\end{tabularx}
+\fonte{elaboração própria (2026), com dados do pytest-cov.}
+\end{singlespace}
+
+A distribuição é coerente com a arquitetura: as camadas internas, que concentram as regras, têm
+cobertura próxima de 100\%. As menores coberturas estão nos adaptadores de hardware (microfone,
+áudio nativo e escuta local), cuja execução exige dispositivos reais, e na interface gráfica, cujos
+caminhos de desenho são parcialmente exercitados pelos testes com a janela real.
+
+\section{Validação manual}
+
+Os aspectos que dependem de hardware ou de percepção humana foram validados manualmente:
+\begin{enumerate}[label=\alph*)]
+  \item a aparência do avatar, por meio de prévias geradas com as mesmas imagens e posições da interface;
+  \item o reconhecimento da frase de ativação com a voz real do usuário, acompanhado pelos registros
+        detalhados, que mostram o texto reconhecido, o volume de pico e o ganho aplicado;
+  \item a gravação real da voz e a criação do perfil;
+  \item a migração dos dados reais, feita primeiro em uma cópia;
+  \item a execução em inglês;
+  \item a abertura da janela a partir da instalação simulada do pacote, com a verificação da classe da
+        janela e da criação das pastas de dados e de cache do usuário;
+  \item a escolha do microfone, conferida na lista de gravações ativas do servidor de áudio, que mostrou
+        o assistente gravando do microfone escolhido, e não do padrão;
+  \item a tela de configurações com os serviços reais e uma pasta de dados temporária, mostrando o
+        modelo local em uso, os modelos instalados e um backup conferido;
+  \item o atalho de sessão gerado, validado pela ferramenta \cod{desktop-file-validate}.
+\end{enumerate}
+
+\section{Estabilidade da suíte}
+
+Como o sistema é concorrente, uma suíte aprovada uma única vez não basta. Antes de cada entrega, a suíte
+completa foi executada repetidamente, inclusive com a máquina sob carga. Esse procedimento revelou e
+permitiu corrigir quatro defeitos intermitentes ao longo do projeto: dois testes que dependiam de
+tempo sob carga, a liberação de variáveis da interface fora da thread principal e o bloqueio da thread
+de renderização pelo coletor de lixo, descrito no Capítulo 6.

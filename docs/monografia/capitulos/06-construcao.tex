@@ -1,0 +1,545 @@
+\chapter{Construção do sistema: passo a passo}
+
+Este capítulo relata, em ordem cronológica, os vinte incrementos que levaram o Robofael da primeira
+versão funcional à versão 3.8.0. Para cada incremento são descritos o pedido que o motivou, o que foi
+construído, as decisões tomadas, os problemas encontrados e a forma de verificação. A
+Tabela~\ref{tab:evolucao} resume a evolução.
+
+\begin{singlespace}
+\legendatabela{Evolução do sistema por incremento}\label{tab:evolucao}
+\small
+\begin{tabularx}{\textwidth}{C{0.8cm}C{1.6cm}LC{2.2cm}}
+\toprule
+\textbf{Nº} & \textbf{Versão} & \textbf{Incremento} & \textbf{Testes} \\ \midrule
+\endfirsthead
+\toprule
+\textbf{Nº} & \textbf{Versão} & \textbf{Incremento} & \textbf{Testes} \\ \midrule
+\endhead
+1  & --     & Protótipo: avatar a partir das fotos, voz, agenda e modelo de linguagem & -- \\
+2  & --     & Busto centralizado e boca suave & -- \\
+3  & --     & Perfil de voz (ajuste de tom e ritmo) & -- \\
+4  & --     & Nitidez, camisa futurista e boca natural & -- \\
+5  & 1.0.0  & Estrutura profissional, documentação e testes unitários & 98 \\
+6  & 2.0.0  & Refatoração completa: arquitetura hexagonal e pipeline em fluxo contínuo & 168 \\
+7  & 2.1.0  & Renomeação para Robofael & 168 \\
+8  & --     & Gravação da voz do usuário e criação do perfil real & 168 \\
+9  & 2.2.0  & Ativação por voz local (“ok Robofael”) & 211 \\
+10 & 2.3.0  & Nova frase de ativação (“ok Fael”) com gramática restrita & 247 \\
+11 & 3.0.0  & Memória de longo prazo, “o que eu fiz”, janela fixa, configurações e programas & 351 \\
+12 & 3.0.1  & Ganho automático do microfone e aviso de voz baixa & 357 \\
+13 & 3.1.0  & Internacionalização (português e inglês) & 508 \\
+14 & 3.2.0  & Instalador padrão para Ubuntu & 508 \\
+15 & 3.3.0  & Revisão SOLID e código limpo, com testes de arquitetura & 529 \\
+16 & 3.4.0  & Desempenho e fluidez guiados por medição; tipagem completa & 546 \\
+17 & 3.5.0  & Nome técnico \cod{robofael}, com compatibilidade com os nomes antigos & 549 \\
+18 & 3.6.0  & Modelo de linguagem local (Ollama) com respostas em camadas & 576 \\
+19 & 3.7.0  & Escolha do microfone e abertura junto com o computador & 601 \\
+20 & 3.8.0  & Local e backup do banco; modelo em uso e modelos compatíveis & 643 \\
+\bottomrule
+\end{tabularx}
+\fonte{elaboração própria (2026), a partir do registro de mudanças do projeto.}
+\end{singlespace}
+
+\section{Incremento 1: protótipo funcional}
+
+\textbf{Pedido.} Criar um programa em Python que manipulasse as imagens do usuário, presentes na pasta
+do projeto, para transformá-las no avatar de um assistente pessoal de atividades diárias que ouve e
+responde por voz.
+
+\textbf{Construção.} Foram usadas duas fotografias: a do crachá e uma \en{selfie}, ambas já sem
+fundo. Em cada uma foram medidas manualmente as posições da boca e do queixo. A animação foi obtida pela
+deformação suave da região da mandíbula para baixo, com o preenchimento do espaço aberto por um interior
+escuro de boca, em oito níveis de abertura. Um brilho ciano nas bordas deu ao avatar a aparência de
+assistente digital. A voz foi implementada com reconhecimento de fala em português pelo serviço do Google
+e síntese pela voz neural \cod{pt-BR-AntonioNeural}, com o gTTS como reserva. A abertura da boca passou a
+acompanhar o volume real do áudio, quadro a quadro. A agenda de tarefas e lembretes falados era salva em
+um arquivo JSON, e o modelo Claude, quando disponível, operava a agenda por meio de ferramentas; sem
+chave de acesso, um modo offline atendia a comandos básicos.
+
+\textbf{Verificação.} A interface foi executada com os dois avatares e a fala sincronizada com a
+animação. A integração com o modelo de linguagem não pôde ser exercitada de imediato, por falta de
+credenciais na máquina, e foi registrada como pendente.
+
+\section{Incremento 2: busto centralizado e boca suave}
+
+\textbf{Pedido.} Exibir apenas um busto, centralizado, e suavizar a animação da boca.
+
+\textbf{Construção.} Mediu-se o topo e o centro da cabeça em cada foto, e o recorte passou a ir de um
+pouco acima da cabeça até os ombros, centralizado na cabeça, e não na foto inteira. Com isso, a
+\en{selfie}, que estava deslocada para o lado, ficou centralizada. Uma moldura oval com bordas suaves
+passou a esconder os cortes das fotos. Para a boca, o número de aberturas subiu de 8 para 16, mais
+próximas entre si quando a boca está quase fechada, onde os saltos eram mais visíveis. Cada quadro passou
+a ser desenhado no dobro do tamanho e depois reduzido (superamostragem), eliminando o serrilhado. O
+volume da voz passou a ser lido 60 vezes por segundo, sem picos isolados nem ruído de fundo. A boca
+passou a abrir rápido e fechar devagar, como na fala real, e a animação foi para cerca de 60 quadros por
+segundo.
+
+\textbf{Verificação.} Capturas de tela confirmaram o enquadramento e a passagem por aberturas
+intermediárias durante a fala.
+
+\section{Incremento 3: perfil de voz}
+
+\textbf{Pedido.} Registrar a voz do usuário e fazer o assistente falar com o mesmo tom. Diante das
+alternativas, ajustar apenas o tom de uma voz neural ou clonar o timbre localmente, o usuário escolheu
+a primeira.
+
+\textbf{Construção.} Foi criado um gravador de voz com interface própria, que apresenta frases para
+leitura, detecta o fim de cada uma e permite regravar. Com pelo menos três gravações, o programa estima o
+tom médio por autocorrelação e a velocidade de fala. Em seguida, escolhe a voz neural em português de tom
+mais próximo e ajusta tom e ritmo até que a voz sintética fique a menos de 3 Hz da voz do usuário. O
+perfil é salvo em arquivo JSON.
+
+\textbf{Verificação.} O medidor de tom acertou sinais de teste com erro máximo de 1 Hz. Em uma
+simulação com um “usuário” 25 Hz mais grave e 15\% mais lento, o perfil resultou em um ajuste de
+$-22$ Hz, com o tom final a 2 Hz do alvo, e em um ritmo de $-14\%$.
+
+\section{Incremento 4: nitidez, camisa futurista e boca natural}
+
+\textbf{Pedido.} Aumentar a nitidez do avatar, trocar a roupa por uma camisa de corte futurista, tornar
+o movimento da boca mais natural e manter o busto centralizado.
+
+\textbf{Construção.} Constatou-se que a \en{selfie} sem fundo tinha apenas 433 por 577 pixels, mas o
+arquivo original tinha 1200 por 1600 pixels na mesma proporção. Passou-se então a usar a imagem sem fundo
+apenas como máscara de contorno, aplicada sobre a foto em alta resolução. A foto do crachá, disponível
+apenas em 500 pixels, recebeu ampliação de alta qualidade, filtro de nitidez e leve aumento de
+contraste. A camisa original foi substituída por uma camisa azul-grafite desenhada por cima, com gola
+alta metálica de borda luminosa, costuras em V com brilho ciano, placas nos ombros com pequenos LEDs e
+um emblema no peito. As dobras do tecido foram preservadas aproveitando-se a luz e a sombra da camisa
+original. A boca deixou de ser um corte que descia e passou a ser uma deformação contínua: o lábio
+superior sobe levemente, a mandíbula desce, os cantos ficam presos e a abertura tem formato de lente,
+com sombra sob os dentes e língua visível nas aberturas maiores. Foram introduzidos três formatos de
+vogal (arredondado para “o” e “u”, neutro para “a” e mais largo para “e” e “i”), escolhidos a partir do
+timbre do áudio.
+
+\textbf{Verificação.} Prévias geradas com as mesmas imagens e posições da interface, além da execução
+da interface com fala simulada, sem erros.
+
+\section{Incremento 5: estrutura profissional e testes (versão 1.0.0)}
+
+\textbf{Pedido.} Organizar o projeto com estrutura profissional, pronta para versionamento, com um
+arquivo README que explicasse a arquitetura, a forma de execução e os fluxos, e com testes unitários.
+
+\textbf{Construção.} Os scripts soltos foram reorganizados em um pacote Python instalável, com
+subpacotes para lógica (agenda, conversa, ferramentas, modo offline), áudio, avatar e interface, e com a
+configuração centralizada e ajustável por variáveis de ambiente. As fotos foram movidas para uma pasta de
+recursos com nomes legíveis. A lógica foi separada do microfone, do alto-falante e da tela, e o cliente
+do modelo, o relógio e as pastas tornaram-se substituíveis por versões simuladas, o que viabilizou os
+testes sem hardware. Os dados pessoais (agenda, perfil e gravações) e as imagens geradas foram colocados
+em pastas excluídas do controle de versão. Foram criados um Makefile, o arquivo de projeto
+\cod{pyproject.toml} e o README.
+
+\textbf{Verificação.} 98 testes unitários aprovados em cerca de três segundos e análise de estilo sem
+ocorrências.
+
+\section{Incremento 6: refatoração completa (versão 2.0.0)}
+
+\textbf{Pedido.} Refatorar o projeto do início ao fim, com nível de engenharia de grandes empresas de
+tecnologia, aperfeiçoando a usabilidade, o desempenho e a organização arquitetural.
+
+\textbf{Diagnóstico.} Antes de qualquer alteração, foi feito um diagnóstico. O fluxo era totalmente
+serial: esperava-se a resposta inteira do modelo, sintetizava-se todo o áudio e só então a fala começava,
+com três a seis segundos de silêncio. O microfone usava uma função da biblioteca que funcionava como
+caixa-preta, sem nível de áudio nem cancelamento. Os estados eram cadeias de caracteres alteradas por
+várias threads. A renderização do avatar bloqueava a abertura da janela. Os lembretes eram verificados
+a cada 15 segundos. A escrita direta do JSON podia corromper o arquivo. Por fim, a classe principal da
+interface conhecia todas as tecnologias.
+
+\textbf{Construção.} A solução foi reescrita em arquitetura hexagonal, com:
+\begin{enumerate}[label=\alph*)]
+  \item domínio tipado com classes de dados no lugar de dicionários;
+  \item máquina de estados explícita e barramento de eventos;
+  \item pipeline em fluxo contínuo de três estágios, com divisor incremental de frases;
+  \item áudio decodificado em memória e envelope da boca calculado antes da reprodução;
+  \item cache em disco das falas sintetizadas;
+  \item renderização paralela do avatar fora da thread da interface, com cache invalidado pelo resumo do
+        código;
+  \item inicialização paralela dos serviços em segundo plano;
+  \item agendador que dorme até o próximo lembrete;
+  \item detecção de fala própria, com medidor de nível real e pausa de fim de fala de 0,7 s;
+  \item escrita atômica da agenda e preservação de arquivos corrompidos;
+  \item histórico da conversa somente de acréscimo, com descarte por rodada;
+  \item validação local das entradas das ferramentas.
+\end{enumerate}
+Foram adotados o verificador de tipos, a análise estática, os ganchos de \en{pre-commit} e a integração
+contínua com servidor gráfico virtual.
+
+\textbf{Problemas corrigidos.} Foram corrigidos cinco problemas: um cancelamento que se perdia quando o
+ESPAÇO era pressionado duas vezes rapidamente; uma notificação perdida no agendador; um erro de ponto
+flutuante no limiar de tempo da detecção de fala; o acesso à interface do gravador fora da thread
+principal; e valores padrão da configuração incompatíveis com classes de dados compactas.
+
+\textbf{Verificação.} 168 testes, incluindo um teste que prova que a primeira frase toca antes de o
+modelo terminar de gerar a resposta. A janela passou a aparecer em 0,8 s, e a primeira palavra no modo
+offline, em cerca de 1,3 s.
+
+\section{Incremento 7: renomeação para Robofael (versão 2.1.0)}
+
+\textbf{Pedido.} Mudar o nome do assistente de EuRobô para Robofael.
+
+\textbf{Construção.} O nome passou a ficar centralizado em um único campo da configuração, ajustável
+por variável de ambiente, e foi aplicado ao título da janela, à saudação, às instruções do modelo, à
+ferramenta de gravação, aos registros e à documentação. Optou-se por manter o nome técnico do pacote
+(\cod{eurobo}) para não quebrar importações, comandos e caminhos existentes. A renomeação técnica
+para \cod{robofael} só ocorreu na versão 3.5.0 (Incremento 17), mantendo os comandos e as variáveis
+de ambiente antigos como alternativas.
+
+\textbf{Verificação.} Testes do nome padrão, da troca por variável e da apresentação do modelo como
+Robofael.
+
+\section{Incremento 8: gravação da voz real do usuário}
+
+\textbf{Pedido.} Gravar a voz do usuário.
+
+\textbf{Construção e resultado.} A ferramenta de gravação foi aberta, e o usuário gravou as cinco
+frases. O tom médio medido foi de 116 Hz. A voz base mais próxima foi a \cod{pt-BR-AntonioNeural}, com
+137 Hz. O ajuste de tom de $-21$ Hz levou a voz sintética a 118 Hz, a 2 Hz da voz do usuário, e o ritmo
+ficou em $-26\%$. As gravações tiveram entre 3,9 e 5,2 segundos de fala cada uma, com tom entre 95 e
+119 Hz, e o perfil usa a mediana das cinco para reduzir o efeito de frases interrogativas.
+
+\textbf{Problemas e diagnóstico.} Durante a primeira execução real, o modelo de linguagem não
+conectou. A investigação mostrou que a configuração do terminal do usuário direcionava as chamadas da API
+para um servidor local de outro fornecedor, onde o modelo não existia. A mensagem de aviso foi
+aprimorada para indicar essa causa, sem alterar a configuração pessoal do usuário. Também foi eliminado
+o ruído de mensagens nativas do servidor de áudio JACK que aparecia no terminal a cada abertura do
+microfone.
+
+\section{Incremento 9: ativação por voz (versão 2.2.0)}
+
+\textbf{Pedido.} Acionar a captura de voz com a frase “ok Robofael”, em vez de pressionar o ESPAÇO.
+Entre o reconhecimento local e o remoto da frase de ativação, o usuário escolheu o local.
+
+\textbf{Construção.} Foi implementada a escuta passiva local com o Vosk e um modelo compacto de
+31 MB para português, para que o áudio do ambiente não deixasse o computador. Como o modelo não conhece
+a palavra “Robofael” e a transcreve por aproximação (por exemplo, “o que roubou fel”), a detecção foi
+feita por semelhança fonética, calibrada com transcrições reais: ativa com a frase sozinha, com a frase
+seguida de comando e com a frase dita após outra conversa, mas não com “ok Rafael” nem com conversas
+comuns. Quando o reconhecedor remoto erra a frase de ativação, como em “Ok Google Fael, me lembra…”, o
+comando é recuperado pelo alinhamento das duas transcrições. Um sinal sonoro de dois tons confirma a
+ativação.
+
+\textbf{Problemas corrigidos.} A biblioteca de áudio capturava os sinais de interrupção do sistema, e
+o programa não fechava com Ctrl+C nem com SIGTERM. A solução foi desativar os tratadores de sinal da
+biblioteca e tratar os sinais no laço da interface.
+
+\textbf{Verificação.} 211 testes; reconhecimento real exercitado com a voz neural do perfil injetada no
+lugar do microfone.
+
+\section{Incremento 10: frase “ok Fael” e gramática restrita (versão 2.3.0)}
+
+\textbf{Pedido.} Trocar a frase de ativação para “ok Fael”.
+
+\textbf{Construção.} A palavra “Fael”, curta e fora do vocabulário do modelo local, era simplesmente
+descartada: “ok Fael” virava “ok” ou “o que foi”. A transcrição livre foi então substituída por uma
+gramática restrita, na qual o reconhecedor só pode escolher entre variantes aceitas de “ok Fael” e
+frases distratoras parecidas e frequentes. Com isso, o que não é a frase de ativação é absorvido pelas
+distratoras. A frase de ativação passou a ser configurável e independente do nome do assistente. Como a
+pausa da vírgula dividia a fala em duas partes, a escuta passou a continuar gravando enquanto houvesse
+voz após a frase. O comando também passou a ser limpo da frase quando o reconhecedor remoto a transcreve
+de forma inesperada, como em “o que Israel anota tarefa…”, que resulta em “anota tarefa…”.
+
+\textbf{Verificação.} Calibração com cinco vozes sintéticas: zero falsos positivos em 115 frases
+parecidas e 8 acertos em 8 tentativas na voz do perfil do usuário; 247 testes.
+
+\section{Incremento 11: memória de longo prazo e outras funções (versão 3.0.0)}
+
+\textbf{Pedido.} Adicionar um banco SQLite como memória de longo prazo, com histórico auditável de
+tarefas e lembretes, para que o assistente respondesse o que o usuário fez em uma data ou semana do
+passado. O pedido incluía ainda tornar fixo o tamanho da janela, porque a tela cheia quebrava a
+renderização; criar um botão de configuração de avatar e voz; permitir abrir programas instalados no
+Linux; e garantir a integridade de todos os testes.
+
+\textbf{Construção.} O pedido foi dividido em seis frentes:
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{memória em SQLite}: agenda, histórico e preferências em um único arquivo; histórico
+        somente de acréscimo, com gatilhos que recusam alteração e remoção e com cadeia de resumos SHA-256;
+        estado e histórico gravados na mesma transação; esquema versionado; importação automática do
+        arquivo JSON anterior, renomeado e preservado; verificação de integridade por comando;
+  \item \textbf{“o que eu fiz”}: interpretação de períodos (dezenove formas testadas) e cálculo do
+        resultado líquido no período, disponível no modo offline e como ferramenta do modelo;
+  \item \textbf{janela de tamanho fixo}: tamanhos mínimo e máximo iguais e redimensionamento desativado;
+  \item \textbf{configurações}: diálogo com avatar, voz, tom, ritmo, botão para ouvir, uso do perfil
+        gravado e ativação por voz, com cancelamento que desfaz o teste e preferências persistidas;
+  \item \textbf{programas}: leitura das entradas \cod{.desktop}, sinônimos, navegador padrão,
+        desambiguação e abertura sem interpretador de comandos;
+  \item \textbf{testes}: cobertura de todas as frentes, incluindo a detecção de quatro tipos de
+        adulteração do histórico.
+\end{enumerate}
+
+\textbf{Problemas corrigidos.} Um teste revelou que “anota tarefa abrir conta no banco” abria um
+programa, em vez de criar a tarefa; os comandos de agenda passaram a ter prioridade. A análise estática
+apontou uma função anônima que usava uma variável já descartada pelo tratamento de exceção. As
+variáveis da interface eram destruídas fora da thread principal pelo coletor de lixo e passaram a ser
+liberadas explicitamente.
+
+\textbf{Verificação.} 351 testes aprovados em três execuções seguidas e execução real com uma cópia dos
+dados do usuário, na qual a migração, a consulta ao histórico e a verificação de integridade
+funcionaram.
+
+\section{Incremento 12: ganho automático (versão 3.0.1)}
+
+\textbf{Contexto.} Os primeiros testes com a voz real do usuário mostraram que a frase de ativação não
+era reconhecida: o reconhecedor ouvia apenas “ok” e “que”, e o pico do sinal ficava em cerca de 580,
+quando o necessário era superior a 1000. A investigação, feita somente por leitura, revelou que o
+microfone em uso era o interno do computador, com entrada em 37\%, enquanto um microfone USB conectado
+não estava sendo usado.
+
+\textbf{Construção.} Foi implementado um controle automático de ganho que amplifica até 8 vezes a voz
+que chega baixa, resistente a picos isolados, e um aviso de voz baixa no terminal e na tela, com
+orientação ao usuário. As configurações de áudio do sistema não foram alteradas; os comandos para
+ajustá-las foram fornecidos ao usuário.
+
+\textbf{Verificação.} 357 testes; após o ajuste, os registros mostraram nove ativações bem-sucedidas
+com a voz real do usuário.
+
+\section{Incremento 13: internacionalização (versão 3.1.0)}
+
+\textbf{Pedido.} Permitir que o assistente responda em inglês quando configurado.
+
+\textbf{Construção.} Todas as mensagens foram reunidas em um catálogo único, com as duas línguas lado a
+lado, e um tradutor foi injetado em todos os componentes, com troca ao vivo. O idioma passou a afetar as
+respostas, a interface, a voz neural (Antonio em português; Andrew, Brian, Guy ou Jenny em inglês), a
+voz de reserva, o reconhecimento de fala e as instruções do modelo, cuja conversa recomeça na troca.
+Os comandos passaram a ser entendidos nos dois idiomas, independentemente do idioma das respostas, e os
+períodos em inglês foram suportados, com datas numéricas seguindo a convenção de cada idioma.
+
+\textbf{Problemas corrigidos.} O diálogo de configurações podia falhar ao se tornar modal antes de
+aparecer na tela e passou a tentar novamente. Além disso, as instruções ao modelo deixaram de atribuir
+gênero ao usuário.
+
+\textbf{Verificação.} 508 testes, inclusive um que garante que nenhuma tradução está faltando e que os
+campos de formatação coincidem nas duas línguas; execução real em inglês com uma cópia dos dados.
+
+\section{Incremento 14: instalador para Ubuntu (versão 3.2.0)}
+
+\textbf{Pedido.} Criar um instalador padrão para ambientes Ubuntu.
+
+\textbf{Construção.} Optou-se por um pacote \cod{.deb}, o formato nativo da distribuição
+\cite{debian}. O pacote contém o código, as fotos, o modelo de ativação e todas as dependências Python
+em formato \en{wheel}, o que permite instalar sem internet e de forma determinística. As dependências de
+sistema, como Python, Tk, PyAudio e PortAudio, são declaradas para o gerenciador de pacotes. Na
+instalação, um ambiente Python isolado é criado em \cod{/opt/robofael} e verificado. O pacote fornece
+os comandos \cod{robofael} e \cod{robofael-gravar-voz}, atalhos no menu de aplicativos e um ícone
+gerado a partir do próprio avatar. Os dados de cada usuário ficam em \cod{~/.local/share/robofael} e o
+cache em \cod{~/.cache/robofael}, conforme as convenções XDG. A remoção apaga o programa, mas preserva
+os dados do usuário. A janela passou a declarar a classe \cod{robofael}, para que o ambiente gráfico a
+associe ao ícone do menu.
+
+\textbf{Problemas corrigidos.} Uma das dependências não era distribuída como \en{wheel} e passou a ser
+construída localmente. Além disso, o ambiente isolado reutilizava uma versão da biblioteca de imagens do
+sistema sem suporte à interface gráfica, o que foi resolvido pela instalação forçada das versões
+incluídas no pacote.
+
+\textbf{Verificação.} Um roteiro de teste instala o pacote em uma pasta temporária e verifica a
+integridade dos arquivos, os atalhos, a criação do ambiente sem internet, os lançadores, os caminhos de
+dados, o funcionamento do núcleo e a remoção. A janela foi aberta a partir dessa instalação simulada.
+
+\section{Incremento 15: revisão SOLID e código limpo (versão 3.3.0)}
+
+\textbf{Pedido.} Validar o projeto de ponta a ponta, implementando e verificando os conceitos SOLID e de
+código limpo, garantindo que os testes continuassem funcionando.
+
+\textbf{Construção.} Esse incremento é detalhado no Capítulo 7. Em síntese, foram feitas as seguintes
+alterações:
+\begin{enumerate}[label=\alph*)]
+  \item o orquestrador foi dividido em três classes;
+  \item as políticas de sessão saíram da raiz de composição e da interface;
+  \item três despachos condicionais tornaram-se tabelas extensíveis;
+  \item contratos foram criados ou movidos para que todas as dependências apontassem para dentro;
+  \item uma violação do princípio de Liskov foi eliminada;
+  \item funções longas foram decompostas;
+  \item regras de complexidade foram incorporadas à análise estática;
+  \item testes de arquitetura passaram a verificar as regras automaticamente.
+\end{enumerate}
+
+\textbf{Problema corrigido.} Durante a revisão, um teste de interface passou a falhar de forma
+intermitente apenas na suíte completa. A investigação, feita com a captura das pilhas de execução no
+momento da falha, revelou que a thread de renderização do avatar ficava bloqueada no destrutor de uma
+imagem Tk de um teste anterior: o coletor de lixo do Python, acionado naquela thread, chamava a
+biblioteca gráfica fora da thread principal. O defeito era latente e havia sido apenas exposto pela
+mudança no momento da coleta. A correção recolhe esses objetos na thread principal ao fim de cada teste
+de interface, e a fixture duplicada foi unificada.
+
+\textbf{Verificação.} 529 testes, 85\% de cobertura, nenhuma função com complexidade ciclomática acima
+de 10 e imagens do avatar idênticas, pixel a pixel, às anteriores à refatoração.
+
+\section{Incremento 16: desempenho e fluidez guiados por medição (versão 3.4.0)}
+
+\textbf{Pedido.} Refatorar novamente o projeto de ponta a ponta, aperfeiçoando a usabilidade e o
+desempenho, com uma organização ainda mais moderna e profissional.
+
+\textbf{Diagnóstico.} Como as revisões anteriores já haviam tratado a estrutura, este incremento começou
+por medições do aplicativo real, e não pela leitura do código. Com o assistente parado, depois da
+saudação, o processo consumia 29\% de um núcleo de processamento. Um microbenchmark do palco mostrou que
+cada quadro levava cerca de 13 ms, perto do limite de 16,6 ms de um quadro a 60 por segundo. Medições
+isoladas de cada elemento revelaram a causa: qualquer alteração sob o halo (600 por 600 pixels com
+transparência) ou sob o avatar obrigava a biblioteca gráfica a refazer, em software, a mistura de
+transparência de toda a área, e girar um único arco custava 8 ms. Além disso, a montagem dos 40 halos
+bloqueava a thread da interface por 0,75 s antes de a janela aparecer, e a troca de avatar convertia
+36 imagens de uma vez, com um engasgo de cerca de 170 ms. Na fala, a medição do áudio sintetizado
+mostrou que cada frase trazia cerca de 0,25 s de silêncio no início e de 0,9 a 1,2 s no fim, o que, na
+reprodução frase a frase, se transformava em pausas artificiais.
+
+\textbf{Construção.} Foram realizadas as seguintes alterações:
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{canvas diferencial}: uma camada entre o palco e a biblioteca gráfica guarda o último valor
+        enviado de cada item e só repassa coordenadas, em pixels inteiros, e opções que mudaram;
+  \item \textbf{halo opaco}: o halo passou a ser gerado já misturado com a cor de fundo, de modo que a
+        biblioteca copia os pixels em vez de misturar transparência; o redesenho sob o halo caiu de
+        cerca de 8 ms para 0,1 ms;
+  \item \textbf{taxa de quadros adaptativa}: um laço de quadros extraído da janela principal roda a 60
+        quadros por segundo com o assistente ouvindo, pensando ou falando, ou durante transições de cor,
+        e a 30 em repouso, agendando pelo relógio para não acumular atraso;
+  \item \textbf{fila de trabalho com orçamento}: os halos passaram a ser gerados em segundo plano, e a
+        conversão de halos e quadros do avatar para a biblioteca gráfica é feita aos poucos, com no
+        máximo 4 ms por quadro;
+  \item \textbf{corte do silêncio}: uma função de processamento de sinal localiza o trecho com fala e
+        mantém margens de 30 ms antes e 150 ms depois, preservando consoantes fracas no início;
+  \item \textbf{síntese paralela}: até duas frases são sintetizadas ao mesmo tempo e tocadas na ordem
+        original; a decodificação continua em uma única thread, porque o mixer de áudio não é feito
+        para uso concorrente;
+  \item \textbf{pedido digitado durante a fala}: enviar um texto com o assistente ocupado passou a
+        interromper o que ele fazia e atender o pedido novo, em vez de descartá-lo; se vários forem
+        enviados, vale o mais recente, e uma trava garante que o pedido seja atendido exatamente uma vez;
+  \item \textbf{tipagem completa}: todas as funções passaram a ter assinatura tipada, exigência agora
+        verificada pelo mypy.
+\end{enumerate}
+
+\textbf{Problemas evitados.} Ao tipar a função de recorte do busto, uma primeira versão passou a usar
+coordenadas arredondadas também no cálculo da posição da boca, o que a deslocaria em até meio pixel. A
+comparação do resumo SHA-256 de todos os quadros, feita antes e depois, detectou a diferença, e a
+correção restaurou as imagens idênticas pixel a pixel. Uma medição inicial do consumo em repouso também
+se mostrou contaminada pela saudação falada e foi refeita depois que ela terminava, com a versão anterior
+medida nas mesmas condições.
+
+\textbf{Verificação.} 546 testes, incluindo uma regressão de desempenho determinística: um palco em
+repouso, desenhado em um canvas falso que conta as chamadas, precisa enviar menos de 80 comandos por
+segundo, e as imagens grandes só podem ser redesenhadas poucas vezes por segundo. A cobertura ficou em
+85,9\%. No aplicativo real, o consumo em repouso caiu de 29\% para 5\% de um núcleo, a janela passou a
+aparecer em 0,6 s (antes, de 1,7 a 2,4 s), a primeira palavra da saudação passou a sair de 0,4 a 0,8 s
+mais cedo e a saudação completa ficou cerca de 1,6 s mais curta.
+
+\section{Incremento 17: nome técnico robofael (versão 3.5.0)}
+
+\textbf{Pedido.} Renomear o nome técnico do projeto, que ainda era \cod{eurobo}, para \cod{robofael},
+sem quebrar comandos e variáveis que o usuário já usasse.
+
+\textbf{Construção.} O pacote Python, os comandos, as variáveis de ambiente, o lançador do pacote
+\cod{.deb} e a documentação passaram a usar o nome \cod{robofael}. Os nomes antigos foram mantidos como
+alternativas: os comandos \cod{eurobo} e \cod{eurobo-gravar-voz} continuam instalados como apelidos, e
+cada variável \cod{EUROBO_*} ainda é lida quando a \cod{ROBOFAEL_*} correspondente não está definida,
+com um aviso de depreciação no registro. O lançador do pacote faz a mesma substituição, para que uma
+pasta de dados já configurada pelo nome antigo continue sendo usada.
+
+\textbf{Verificação.} 549 testes, incluindo a leitura dos nomes antigos com aviso e a precedência do
+nome novo; um teste de arquitetura garante que o nome antigo só aparece no código de compatibilidade, e
+o roteiro do pacote confere que o lançador respeita a variável antiga da pasta de dados.
+
+\section{Incremento 18: modelo de linguagem local (versão 3.6.0)}
+
+\textbf{Pedido.} Permitir que o assistente converse e entenda pedidos em linguagem livre sem o Claude,
+com um modelo executado no próprio computador.
+
+\textbf{Construção.} Foi criado um adaptador para o Ollama \cite{ollama}, servidor de modelos locais
+acessado por HTTP, escrito apenas com a biblioteca padrão. A raiz de composição passou a escolher o
+melhor cérebro disponível, na ordem Claude, modelo local e modo offline, com uma variável que restringe
+a escolha. O modelo padrão, de 3 bilhões de parâmetros, foi escolhido por responder em tempo aceitável
+no processador, sem placa de vídeo.
+
+\textbf{Problema e decisão.} Os primeiros testes mostraram que um modelo pequeno é bom para conversar,
+mas pouco confiável para escolher ferramentas: um pedido de curiosidade abriu o navegador e um
+desabafo listou as tarefas. Por isso, a resposta passou a ser montada em camadas:
+\begin{enumerate}[label=\alph*)]
+  \item comandos que o modo offline reconhece são atendidos por ele, na hora e sempre do mesmo jeito;
+  \item pedidos de agenda em linguagem livre vão ao modelo apenas com as ferramentas do assunto e
+        somente as seguras (criar e consultar); concluir, remover e abrir programas ficam com os
+        comandos explícitos;
+  \item o restante é conversa e vai ao modelo sem ferramentas, com o texto em fluxo contínuo;
+  \item se o servidor local não responder, a fala é atendida pelo modo offline, e o modelo só volta a
+        ser tentado depois de um intervalo.
+\end{enumerate}
+
+Chamadas de ferramenta escritas como texto pelo modelo são executadas ou descartadas, mas nunca
+faladas. O histórico é compactado a cada troca, e o modelo é carregado na memória antes da primeira
+fala, com as mesmas opções da conversa, para evitar uma segunda carga.
+
+\textbf{Verificação.} 576 testes. As camadas, as ferramentas seguras, a queda para o modo offline e o
+cliente HTTP são testados contra um servidor falso; no uso real, a primeira palavra de uma conversa
+saiu em 1 a 2,5 s, e pedidos com ferramentas levaram de 15 a 45 s no processador.
+
+\section{Incremento 19: escolha do microfone e inicialização (versão 3.7.0)}
+
+\textbf{Pedido.} Permitir selecionar o microfone entre os dispositivos do computador e configurar o
+sistema para abrir junto com o computador ou pelo comando \cod{robofael} no terminal.
+
+\textbf{Construção.} Duas portas novas foram criadas, uma para listar os dispositivos de áudio e outra
+para a inicialização. Os microfones são listados pelo servidor de áudio (PipeWire \cite{pipewire} ou
+PulseAudio), sem os monitores das saídas de som, e a escolha é salva nas preferências. Abrir o
+dispositivo físico diretamente disputaria o aparelho com o servidor de áudio e exigiria taxa e canais
+exatos; por isso, o microfone continua sendo aberto pelo dispositivo padrão, e a escolha é indicada ao
+servidor por variáveis de ambiente definidas apenas durante a abertura, sob uma trava, para não serem
+herdadas pelos programas que o assistente abre. A troca vale na próxima escuta: o microfone é
+recalibrado e a escuta passiva é reaberta no novo dispositivo. A inicialização usa um atalho de sessão
+no padrão de entradas \cod{.desktop} \cite{freedesktop}, com atraso de 5 s e verificação de que o
+programa ainda existe, e atalhos em \cod{~/.local/bin} para o terminal. O estado é lido dos próprios
+arquivos, e desligar só apaga atalhos criados para este programa. A tela de configurações passou a ter
+duas colunas.
+
+\textbf{Verificação.} 601 testes. Uma fixture passou a apontar a pasta pessoal para uma pasta
+temporária, para que nenhum teste altere a configuração real do usuário. No aplicativo real, a lista
+do servidor de áudio confirmou que a gravação passou a sair do microfone escolhido, e não do padrão.
+
+\section{Incremento 20: banco, backup e modelos de linguagem (versão 3.8.0)}
+
+\textbf{Pedido.} Permitir escolher onde o banco SQLite é salvo e fazer backup dele em qualquer local, e
+exibir nas configurações qual modelo de linguagem está em uso e quais modelos compatíveis estão
+disponíveis no Claude e no Ollama.
+
+\textbf{Construção.} O banco ganhou as operações de mudar de lugar e de copiar, ambas com o assistente
+em uso:
+\begin{enumerate}[label=\alph*)]
+  \item a cópia usa a interface de backup do SQLite \cite{sqlite}, consistente mesmo com gravações em
+        andamento, e é conferida por uma verificação de integridade antes de ser aceita;
+  \item ao mudar de lugar, a conexão é trocada sob a mesma trava das gravações, e o arquivo antigo é
+        renomeado com a data, nunca apagado; a mudança é recusada se já houver um banco no destino;
+  \item como o banco não pode guardar o próprio endereço, o local escolhido fica em um pequeno arquivo
+        na pasta de dados; se o banco escolhido não estiver acessível na abertura, como em um disco
+        desconectado, o assistente avisa e usa o banco padrão apenas naquela vez, sem criar um banco
+        vazio no lugar;
+  \item o backup é um arquivo único, sem o diário auxiliar, e informa quantos registros do histórico
+        foram copiados.
+\end{enumerate}
+
+Para os modelos, cada provedor ganhou um catálogo: o do Claude lista os modelos liberados para a chave,
+e o do Ollama lista os modelos instalados capazes de conversar e de chamar ferramentas, com o tamanho.
+As consultas são feitas em paralelo, fora da thread da interface, e a falta de chave ou um servidor
+fora do ar viram uma explicação na própria lista.
+
+\textbf{Verificação.} 643 testes, incluindo a mudança do banco com gravações antes e depois, a recusa
+de sobrescrever outro banco, o banco ausente na abertura, a verificação da cadeia de resumos na cópia e
+os catálogos com respostas simuladas. No aplicativo real, a tela mostrou o modelo local em uso e os
+dois modelos instalados, e o backup foi conferido.
+
+\section{Lições aprendidas no processo}
+
+O processo evidenciou algumas lições, discutidas novamente no Capítulo 9:
+
+\begin{enumerate}[label=\alph*)]
+  \item medições com dados reais, como o volume da voz do usuário e transcrições efetivamente produzidas
+        pelos reconhecedores, foram decisivas para resolver problemas que testes com vozes sintéticas
+        não revelavam;
+  \item decisões com impacto na privacidade ou na experiência do usuário foram submetidas a ele, e
+        configurações pessoais do sistema nunca foram alteradas sem autorização;
+  \item defeitos de concorrência só apareceram sob carga ou em execuções repetidas, o que justificou
+        executar a suíte várias vezes seguidas antes de cada entrega;
+  \item otimizar a partir de medições, e não de suposições, levou a ganhos grandes com alterações
+        pequenas: o custo dominante estava no redesenho da biblioteca gráfica, e não no código Python;
+  \item a arquitetura definida na versão 2.0.0 absorveu sem retrabalho estrutural todas as funções
+        seguintes (ativação por voz, memória, programas, idiomas, instalador, modelo local, escolha do
+        microfone e mudança do banco), cada uma como um adaptador novo atrás de uma porta, o que confirma
+        o valor de investir cedo na separação de responsabilidades;
+  \item um modelo de linguagem pequeno precisa de limites explícitos: restringir as ferramentas que ele
+        pode usar e deixar as ações destrutivas para comandos determinísticos tornou o modelo local útil
+        sem expor o usuário a ações indesejadas;
+  \item operações sobre os dados do usuário foram desenhadas para nunca destruir informação: o arquivo
+        antigo é renomeado, o destino ocupado é recusado e toda cópia é conferida antes de ser usada.
+\end{enumerate}

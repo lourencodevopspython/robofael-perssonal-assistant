@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: robofael
+Source: Robofael (EuRobo)
+
+Files: *
+Copyright: 2026 Rafael Lourenço
+License: proprietary
+ Uso pessoal. As fotos em /opt/robofael/assets são pessoais do autor.
+
+Files: opt/robofael/modelos/vosk-model-small-pt-0.3/*
+Copyright: Alpha Cephei Inc.
+License: Apache-2.0
+ Modelo de reconhecimento de fala Vosk (https://alphacephei.com/vosk/models).
+
+Files: opt/robofael/wheels/*
+Copyright: os respectivos autores
+License: várias (ver os metadados de cada pacote Python)

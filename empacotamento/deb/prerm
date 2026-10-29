@@ -1,0 +1,11 @@
+#!/bin/sh
+# Remove o ambiente criado pelo postinst (o dpkg não o conhece). Dados dos usuários ficam intactos.
+set -e
+PREFIXO="${ROBOFAEL_PREFIXO:-/opt/robofael}"
+case "$1" in
+    remove|upgrade|deconfigure)
+        rm -rf "$PREFIXO/venv"
+        find "$PREFIXO" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+        ;;
+esac
+exit 0

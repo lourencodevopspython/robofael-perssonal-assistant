@@ -1,0 +1,34 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Testes e ferramentas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Dados pessoais gerados em execução (agenda, perfil e gravações de voz)
+dados/
+
+# Modelo de reconhecimento local (baixado por `make baixar-modelo-voz`)
+modelos/
+
+# Quadros do avatar gerados automaticamente
+.cache/
+.mypy_cache/
+previa_*.png
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+docs/monografia/build/
+
+# Fotos pessoais do avatar: ficam só no computador (ver assets/avatares/LEIAME.md)
+assets/avatares/*
+!assets/avatares/LEIAME.md

@@ -1,0 +1,109 @@
+\chapter{Introdução}
+
+Assistentes pessoais por voz tornaram-se parte do cotidiano em telefones celulares, caixas de som
+e automóveis. Em computadores pessoais, porém, sobretudo nos que utilizam o sistema operacional
+Linux, a oferta de assistentes integrados ao ambiente de trabalho ainda é limitada. As soluções
+comerciais costumam depender de serviços em nuvem permanentemente à escuta, oferecem pouca
+personalização da aparência e da voz e não guardam um histórico verificável das atividades
+realizadas pelo usuário. Ao mesmo tempo, o surgimento de modelos de linguagem de grande porte
+(\en{Large Language Models}, LLM), capazes de interpretar pedidos em linguagem natural e de acionar
+funções externas, reduziu drasticamente o esforço necessário para construir um assistente que
+compreenda frases livres, e não apenas comandos rígidos \cite{vaswani2017}.
+
+Construir um assistente de voz útil, entretanto, envolve muito mais do que conectar um reconhecedor
+de fala a um modelo de linguagem. É preciso capturar o áudio com qualidade, decidir quando o usuário
+terminou de falar, sintetizar a resposta sem longas esperas, sincronizar a boca de um avatar com a
+voz, persistir dados de forma confiável e manter a interface gráfica fluida enquanto diversas tarefas
+concorrentes acontecem. Esse conjunto de preocupações, distribuído entre várias tecnologias, torna o
+software suscetível a acoplamento excessivo e à degradação de sua estrutura à medida que novas
+funções são acrescentadas, fenômeno descrito por \textcite{martin2019} como o principal fator do custo
+crescente de manutenção.
+
+Este trabalho descreve a concepção, a construção incremental e a validação do \textbf{Robofael}, um
+assistente pessoal de atividades diárias que roda localmente em um computador com Linux. O Robofael
+é representado por um avatar animado criado a partir de fotografias do próprio usuário, ouve e
+responde por voz, organiza tarefas e lembretes, responde perguntas sobre o que foi feito em
+determinado período, abre programas instalados e conversa em português ou em inglês. Além da
+descrição funcional, o trabalho dá ênfase à qualidade interna do software: a solução foi organizada
+segundo a arquitetura hexagonal \cite{cockburn2005} e, ao final, revisada de ponta a ponta à luz dos
+princípios SOLID \cite{martin2003} e das práticas de código limpo \cite{martin2009}, com regras de
+projeto verificadas automaticamente por testes.
+
+\section{Problema de pesquisa}
+
+O problema que orienta este trabalho pode ser enunciado da seguinte forma: \emph{como construir um
+assistente pessoal por voz para computadores com Linux que seja responsivo, preserve a privacidade do
+usuário, mantenha um histórico confiável de suas atividades e, ao mesmo tempo, conserve uma estrutura
+interna fácil de entender, testar e evoluir?}
+
+\section{Objetivos}
+
+\subsection{Objetivo geral}
+
+Desenvolver e validar um assistente pessoal de atividades diárias, com avatar animado e interação por
+voz, cuja arquitetura siga os princípios SOLID e as práticas de código limpo, com comportamento e
+regras de projeto verificados por testes automatizados.
+
+\subsection{Objetivos específicos}
+
+\begin{enumerate}[label=\alph*)]
+  \item gerar, a partir de fotografias do usuário, um avatar em formato de busto com movimentação da
+        boca sincronizada à voz sintetizada;
+  \item implementar o ciclo de conversa por voz (ouvir, compreender e responder) com latência
+        percebida próxima à da primeira frase da resposta;
+  \item permitir a ativação sem as mãos por uma frase de chamada reconhecida localmente;
+  \item oferecer gestão de tarefas e lembretes e uma memória de longo prazo auditável, capaz de
+        responder o que foi feito em um dia, em uma semana ou em outro período;
+  \item integrar o assistente ao ambiente Linux, permitindo abrir programas instalados por comando de
+        voz;
+  \item suportar os idiomas português do Brasil e inglês dos Estados Unidos, com troca em tempo de
+        execução;
+  \item disponibilizar um instalador padrão para o Ubuntu;
+  \item revisar a solução segundo os princípios SOLID e as práticas de código limpo, tornando as
+        regras de arquitetura verificáveis por testes automatizados;
+  \item documentar os requisitos funcionais e não funcionais e todo o processo de construção.
+\end{enumerate}
+
+\section{Justificativa}
+
+A relevância do trabalho manifesta-se em três dimensões. Na dimensão do usuário, um assistente que
+roda no próprio computador, escuta passivamente apenas de forma local e guarda os dados em um arquivo
+sob controle do usuário atende a uma preocupação crescente com privacidade. A memória de longo prazo
+auditável, por sua vez, transforma o assistente em uma ferramenta de acompanhamento de produtividade:
+ao perguntar “o que eu fiz na semana passada?”, o usuário obtém uma resposta baseada em registros
+cuja integridade pode ser verificada.
+
+Na dimensão técnica, o projeto reúne, em um único sistema de porte moderado, problemas clássicos de
+engenharia de software: concorrência entre captura de áudio, geração de texto, síntese de voz e
+animação; integração com serviços externos sujeitos a falhas; persistência transacional; e
+internacionalização. Isso o torna um estudo de caso adequado para avaliar como princípios de projeto
+orientado a objetos se comportam em um contexto real.
+
+Na dimensão acadêmica, o trabalho documenta um processo de desenvolvimento conduzido com o apoio de
+um agente de programação baseado em inteligência artificial e mostra que a qualidade estrutural, nesse
+cenário, pode ser preservada por meio de verificações automáticas, como testes de arquitetura, limites
+de complexidade e verificação estática de tipos, em vez de depender exclusivamente de disciplina
+manual.
+
+\section{Delimitação do escopo}
+
+O sistema destina-se a um único usuário por conta do sistema operacional e foi construído e testado
+no Ubuntu 24.04 com Python 3.12, embora o código seja compatível com Python 3.10 ou superior. O
+reconhecimento de fala para comandos usa o serviço de reconhecimento do Google acessado por meio da
+biblioteca SpeechRecognition, e a síntese de voz utiliza vozes neurais do serviço edge-tts, com o gTTS
+como reserva; ambos exigem conexão com a internet. A interpretação em linguagem natural usa a API do
+Claude ou, sem ela, um modelo local servido pelo Ollama, mais lento quando executado no processador; o
+modo offline cobre um conjunto definido de comandos. O treinamento de
+modelos acústicos próprios, a clonagem completa do timbre de voz e o suporte a outros sistemas
+operacionais estão fora do escopo deste trabalho.
+
+\section{Organização do trabalho}
+
+Além desta introdução, o trabalho está organizado em nove capítulos. O Capítulo 2 apresenta a
+fundamentação teórica sobre assistentes de voz, processamento de fala, modelos de linguagem,
+arquitetura de software, princípios SOLID e código limpo. O Capítulo 3 descreve a metodologia de
+desenvolvimento adotada. O Capítulo 4 especifica os requisitos funcionais e não funcionais. O
+Capítulo 5 detalha a arquitetura e os fluxos de execução. O Capítulo 6 relata, passo a passo, a
+construção incremental do sistema. O Capítulo 7 apresenta a revisão do código à luz dos princípios
+SOLID e do código limpo. O Capítulo 8 trata da estratégia de testes e da validação. O Capítulo 9
+discute os resultados obtidos, e o Capítulo 10 apresenta as conclusões e os trabalhos futuros.

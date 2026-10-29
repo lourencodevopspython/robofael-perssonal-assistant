@@ -1,0 +1,187 @@
+% =============================================================================
+%  Monografia (Trabalho de Conclusão de Curso) — Robofael
+%  Formatação segundo a ABNT: NBR 14724 (apresentação), NBR 6024 (numeração
+%  progressiva), NBR 6027 (sumário), NBR 6028 (resumo), NBR 6023 (referências)
+%  e NBR 10520 (citações, sistema autor-data).
+%  Compilar com XeLaTeX:  make monografia   (ou: latexmk -xelatex monografia.tex)
+% =============================================================================
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ---------- Dados do trabalho (edite aqui) ----------
+\newcommand{\autor}{Rafael Lourenço}
+\newcommand{\titulo}{ROBOFAEL}
+\newcommand{\subtitulo}{assistente pessoal com avatar animado e interação por voz, construído com arquitetura hexagonal e princípios SOLID}
+\newcommand{\instituicao}{[NOME DA INSTITUIÇÃO DE ENSINO]}
+\newcommand{\unidade}{[NOME DA FACULDADE OU DEPARTAMENTO]}
+\newcommand{\curso}{[NOME DO CURSO]}
+\newcommand{\grau}{[bacharel em NOME DO CURSO]}
+\newcommand{\orientacao}{[Nome completo do(a) orientador(a)]}
+\newcommand{\local}{[Cidade]}
+\newcommand{\ano}{2026}
+
+% ---------- Página: A4, margens 3 cm (sup./esq.) e 2 cm (inf./dir.) ----------
+\usepackage[a4paper,top=3cm,left=3cm,bottom=2cm,right=2cm,headheight=15pt,headsep=0.5cm]{geometry}
+
+% ---------- Idioma e fontes (Liberation Serif = métrica da Times New Roman) ----------
+\usepackage{fontspec}
+% Sem padrões de hifenização do português nesta distribuição TeX: em vez de hifenizar
+% com as regras do inglês, a hifenização é desligada (texto justificado com folga extra).
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\newenvironment{idiomaestrangeiro}{}{}
+\setmainfont{Liberation Serif}
+\setmonofont{Liberation Mono}[Scale=0.88]
+
+% ---------- Espaçamento 1,5, recuo de parágrafo e justificação ----------
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\setlength{\emergencystretch}{3em}
+\sloppy
+\usepackage{microtype}
+
+% ---------- Tabelas, quadros e listas ----------
+\usepackage{array}
+\usepackage{ltablex}
+\keepXColumns
+\usepackage{booktabs}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=1.9cm}
+\renewcommand{\contentsname}{Sumário}
+\renewcommand{\listtablename}{Lista de tabelas}
+\newcommand{\fonte}[1]{\par\vspace{2pt}{\noindent\small\singlespacing Fonte: #1\par}\vspace{12pt}}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ---------- Títulos: numeração progressiva (NBR 6024) ----------
+\usepackage{titlesec}
+\titleformat{\chapter}[hang]{\normalfont\bfseries\normalsize}{\thechapter}{0.6em}{\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{0pt}{18pt}
+% Títulos sem indicativo numérico (sumário, listas, referências...): centralizados
+\titleformat{name=\chapter,numberless}[block]{\normalfont\bfseries\normalsize\filcenter}{}{0pt}{\MakeUppercase}
+\titlespacing*{name=\chapter,numberless}{0pt}{0pt}{18pt}
+\titleformat{\section}[hang]{\normalfont\normalsize}{\thesection}{0.6em}{\MakeUppercase}
+\titlespacing*{\section}{0pt}{18pt}{12pt}
+\titleformat{\subsection}[hang]{\normalfont\bfseries\normalsize}{\thesubsection}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{18pt}{12pt}
+\titleformat{\subsubsection}[hang]{\normalfont\normalsize}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\subsubsection}{0pt}{12pt}{12pt}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+% ---------- Paginação: algarismos arábicos no canto superior direito ----------
+\usepackage{fancyhdr}
+\fancypagestyle{textual}{\fancyhf{}\fancyhead[R]{\small\thepage}\renewcommand{\headrulewidth}{0pt}}
+\fancypagestyle{plain}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}}
+
+% ---------- Sumário (NBR 6027) e listas ----------
+\usepackage[titles]{tocloft}  % títulos das listas via \chapter* (centralizados, maiúsculas)
+\newlistof[chapter]{quadro}{loq}{Lista de quadros}
+\renewcommand{\thequadro}{\arabic{quadro}}
+\counterwithout{quadro}{chapter}
+% Legendas acima do quadro/tabela (NBR 14724): "Quadro 1 – Título"
+\newcommand{\legendaquadro}[1]{\refstepcounter{quadro}\par\nopagebreak
+  {\centering\small\singlespacing Quadro \thequadro{} – #1\par}\nopagebreak\vspace{4pt}%
+  \addcontentsline{loq}{quadro}{\protect\numberline{\thequadro}#1}}
+% Listas sem o espaço extra que o LaTeX insere a cada capítulo
+\makeatletter
+\newcommand{\listadequadros}{\begingroup\let\addvspace\@gobble\listofquadro\endgroup}
+\newcommand{\listadetabelas}{\begingroup\let\addvspace\@gobble\listoftables\endgroup}
+\makeatother
+% Contador próprio: o longtable também incrementa o contador "table" a cada tabela
+\newcounter{tabela}
+\newcommand{\legendatabela}[1]{\refstepcounter{tabela}\par\nopagebreak
+  {\centering\small\singlespacing Tabela \thetabela{} – #1\par}\nopagebreak\vspace{4pt}%
+  \addcontentsline{lot}{table}{\protect\numberline{\thetabela}#1}}
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cftchappresnum}{}
+\setlength{\cftchapindent}{0pt}
+\setlength{\cftsecindent}{0pt}
+\setlength{\cftsubsecindent}{0pt}
+\setlength{\cftsubsubsecindent}{0pt}
+\setlength{\cftchapnumwidth}{2.2em}
+\setlength{\cftsecnumwidth}{2.2em}
+\setlength{\cftsubsecnumwidth}{3em}
+\setlength{\cftsubsubsecnumwidth}{3.8em}
+\setlength{\cftbeforechapskip}{4pt}
+\renewcommand{\cftsubsecfont}{\bfseries}
+\renewcommand{\cftsubsecpagefont}{\bfseries}
+\renewcommand{\cfttabpresnum}{Tabela~}
+\renewcommand{\cftquadropresnum}{Quadro~}
+\setlength{\cfttabnumwidth}{5em}
+\setlength{\cftquadronumwidth}{6.6em}
+\renewcommand{\cfttabaftersnum}{~–}
+\renewcommand{\cftquadroaftersnum}{~–}
+
+% ---------- Hiperligações e utilitários ----------
+\usepackage{etoolbox}
+\usepackage{xcolor}
+\PassOptionsToPackage{obeyspaces,spaces}{url}  % \cod preserva espaços (ex.: make verificar)
+\usepackage[hidelinks,bookmarksnumbered]{hyperref}
+\usepackage{url}
+\urlstyle{same}
+% Identificadores de código em fonte monoespaçada, com quebra de linha em _ / . -
+\DeclareUrlCommand\cod{\urlstyle{tt}}
+\renewcommand{\UrlBreaks}{\do\_\do\/\do\.\do\-}
+\newcommand{\en}[1]{\textit{#1}}                  % termos em língua estrangeira
+
+% ---------- Citações autor-data (NBR 10520:2023): (Autor, ano) e Autor (ano) ----------
+\makeatletter
+\newcommand{\defref}[3]{\expandafter\def\csname ref@#1@a\endcsname{#2}\expandafter\def\csname ref@#1@y\endcsname{#3}}
+\newcommand{\refcampo}[2]{\ifcsname ref@#1@#2\endcsname\csname ref@#1@#2\endcsname
+  \else\textbf{[?#1]}\PackageWarning{monografia}{Referencia indefinida: #1}\fi}
+\newcommand{\@citeum}[1]{\@citesep\refcampo{#1}{a}, \refcampo{#1}{y}\gdef\@citesep{; }}
+\AtBeginDocument{%
+  \renewcommand{\cite}[1]{(\gdef\@citesep{}\forcsvlist{\@citeum}{#1})}%
+  \providecommand{\textcite}{}\renewcommand{\textcite}[1]{\refcampo{#1}{a} (\refcampo{#1}{y})}}
+\makeatother
+\input{referencias-chaves}
+
+% Sumário com a mesma grafia dos títulos (NBR 6027): capítulos e seções em maiúsculas.
+% O texto da entrada é convertido ao ser gravado; o número da seção (\numberline) é preservado.
+\makeatletter
+\newcommand{\tocmaiusc}[1]{\@tocmaiusc#1\@nil}
+\def\@tocmaiusc#1#2\@nil{\ifx#1\numberline\@tocnum#2\@nil\else\MakeUppercase{#1#2}\fi}
+\def\@tocnum#1#2\@nil{\numberline{#1}\MakeUppercase{#2}}
+\AtBeginDocument{%
+  \let\addcontentslineoriginal\addcontentsline
+  \renewcommand{\addcontentsline}[3]{%
+    \ifboolexpr{test {\ifstrequal{#1}{toc}} and (test {\ifstrequal{#2}{chapter}} or test {\ifstrequal{#2}{section}})}%
+      {\addcontentslineoriginal{#1}{#2}{\texorpdfstring{\protect\tocmaiusc{#3}}{#3}}}%
+      {\addcontentslineoriginal{#1}{#2}{#3}}}}
+\makeatother
+
+% Título sem indicativo numérico, centralizado (elementos pré e pós-textuais)
+\newcommand{\titulosemnumero}[1]{\clearpage\begin{center}\textbf{\MakeUppercase{#1}}\end{center}\vspace{12pt}}
+\newcommand{\titulopostextual}[1]{\clearpage\phantomsection\addcontentsline{toc}{chapter}{\MakeUppercase{#1}}%
+  \begin{center}\textbf{\MakeUppercase{#1}}\end{center}\vspace{12pt}}
+
+\begin{document}
+\pagestyle{empty}
+
+\input{pretextuais}
+
+% ---------- Parte textual: paginação visível a partir daqui ----------
+\clearpage
+\pagestyle{textual}
+\fancypagestyle{plain}{\fancyhf{}\fancyhead[R]{\small\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+\input{capitulos/01-introducao}
+\input{capitulos/02-fundamentacao}
+\input{capitulos/03-metodologia}
+\input{capitulos/04-requisitos}
+\input{capitulos/05-arquitetura}
+\input{capitulos/06-construcao}
+\input{capitulos/07-solid}
+\input{capitulos/08-testes}
+\input{capitulos/09-resultados}
+\input{capitulos/10-conclusao}
+
+\input{postextuais}
+
+\end{document}

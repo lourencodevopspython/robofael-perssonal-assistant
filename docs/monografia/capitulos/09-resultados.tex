@@ -1,0 +1,164 @@
+\chapter{Resultados e discussão}
+
+Este capítulo apresenta os resultados obtidos em relação aos requisitos e aos objetivos, discute as
+decisões de projeto à luz desses resultados e expõe as limitações identificadas.
+
+\section{Atendimento aos requisitos funcionais}
+
+Os 42 requisitos funcionais especificados no Capítulo 4 foram implementados. Destes, 41 são
+verificados por testes automatizados. O requisito de instalação (RF36) é verificado por um roteiro
+próprio, que instala o pacote em uma pasta temporária e confere seu funcionamento sem alterar o
+sistema. Algumas funções dependem de serviços externos ou de hardware, e sua verificação automatizada
+usa dublês: a conversa livre com o modelo de linguagem (RF24), o reconhecimento remoto (RF03 e RF05) e
+a voz neural (RF06). A escolha do microfone (RF39) foi conferida também no servidor de áudio real.
+Nessas funções, a validação em uso real complementou os testes. A rastreabilidade
+completa está no Apêndice A.
+
+\section{Atendimento aos requisitos não funcionais}
+
+A Tabela~\ref{tab:desempenho} compara as medições de desempenho da arquitetura inicial, serial, com as
+da arquitetura em pipeline introduzida na versão 2.0.0 e mantida até a versão final.
+
+\begin{singlespace}
+\legendatabela{Medições de desempenho}\label{tab:desempenho}
+\small
+\begin{tabularx}{\textwidth}{LP{4.2cm}P{4.2cm}}
+\toprule
+\textbf{Medida} & \textbf{Arquitetura inicial} & \textbf{Arquitetura final} \\ \midrule
+\endfirsthead
+\toprule
+\textbf{Medida} & \textbf{Arquitetura inicial} & \textbf{Arquitetura final} \\ \midrule
+\endhead
+Janela visível após abrir & 0,5 a 4 s & 0,8 s \\
+Primeira palavra (modo offline, texto) & resposta e voz inteiras & cerca de 1,3 s \\
+Primeira palavra (modelo de linguagem) & geração e síntese completas & primeira frase gerada e sintetizada \\
+Tempo para interromper & apenas durante a reprodução & cerca de 10 ms, em qualquer estágio \\
+Renderizar o avatar sem cache (crachá / \en{selfie}) & 2,9 s / 4,3 s & 1,8 s / 2,2 s, em segundo plano \\
+Ler o avatar do cache & cerca de 0,4 s & 0,08 s / 0,2 s \\
+Repetir uma fala já sintetizada & nova síntese & 0,1 ms (cache LRU) \\
+Atraso de um lembrete & até 15 s & menos de 0,1 s \\
+Pausa de fim de fala & 0,9 s fixos & 0,7 s, ignorando ruídos curtos \\
+\bottomrule
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+O Incremento 16 (versão 3.4.0) acrescentou um refinamento guiado por medições do aplicativo real,
+apresentado na Tabela~\ref{tab:desempenho34}. O consumo em repouso foi medido em uma janela de 20 a 30 s
+depois do fim da saudação falada, com as duas versões nas mesmas condições e com o cache do avatar já
+pronto.
+
+\begin{singlespace}
+\legendatabela{Medições de desempenho e fluidez: versões 3.3.0 e 3.4.0}\label{tab:desempenho34}
+\small
+\begin{tabularx}{\textwidth}{LP{3.6cm}P{3.6cm}}
+\toprule
+\textbf{Medida} & \textbf{Versão 3.3.0} & \textbf{Versão 3.4.0} \\ \midrule
+\endfirsthead
+\toprule
+\textbf{Medida} & \textbf{Versão 3.3.0} & \textbf{Versão 3.4.0} \\ \midrule
+\endhead
+Processamento em repouso & 29\% de um núcleo & 5\% de um núcleo \\
+Custo de um quadro do palco (microbenchmark) & 13 ms & 5 ms \\
+Janela visível após abrir & 1,7 a 2,4 s & 0,6 a 0,7 s \\
+Primeira palavra da saudação & 3,1 a 3,2 s & 2,4 a 2,8 s \\
+Duração da saudação & cerca de 10,1 s & cerca de 8,5 s \\
+Silêncio entre frases faladas & cerca de 1,2 s & 0,15 s \\
+Engasgo ao trocar de avatar & cerca de 170 ms & nenhum (no máximo 4 ms por quadro) \\
+Memória residente & cerca de 369 MB & cerca de 368 MB \\
+\bottomrule
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+A memória não diminuiu: cerca de 150 MB correspondem às bibliotecas (o SDK do modelo de linguagem,
+o reconhecedor local com seu modelo, o mixer de áudio e o processamento numérico) e cerca de 100 MB às
+imagens já convertidas para a biblioteca gráfica. Um teste com a devolução explícita de memória ao
+sistema operacional recuperou apenas 10 MB, o que indicou uso legítimo, e não fragmentação.
+
+Os requisitos de desempenho (RNF01 a RNF05, RNF26 e RNF27) foram atendidos conforme as tabelas
+anteriores. Os requisitos de confiabilidade (RNF06 a RNF09) foram atendidos e são verificados por testes que
+simulam falhas de transação, adulterações do histórico, interrupções durante o fluxo de texto, recusas
+e erros da API, ausência de microfone e falhas repetidas da escuta passiva. O requisito de exatidão da
+ativação (RNF13) foi atendido no conjunto de calibração, com zero falsos positivos em 115 frases
+parecidas, e confirmado em uso real com a voz do usuário depois da introdução do ganho automático.
+Os requisitos de manutenibilidade (RNF19 a RNF22) foram atendidos e passaram a ser verificados
+continuamente: nenhuma dependência fora da regra entre camadas, complexidade máxima de 10, tipos
+verificados sem ocorrências, com todas as assinaturas tipadas, e cobertura de 85,9\%, acima do mínimo
+de 80\%.
+
+\section{Discussão}
+
+\subsection{Latência percebida}
+
+O maior ganho de experiência veio de uma decisão arquitetural, e não de otimizações locais. Ao
+sobrepor a geração de texto, a síntese e a reprodução, o tempo até a primeira palavra deixou de
+depender do tamanho da resposta. Esse resultado está de acordo com a observação de
+\textcite{nielsen1993} de que respostas em torno de um segundo preservam o fluxo da interação. O custo
+dessa escolha é a concorrência, que exigiu mecanismos explícitos: token de cancelamento por interação,
+máquina de estados e barramento de eventos.
+
+\subsection{Privacidade e exatidão da ativação}
+
+O uso de um reconhecedor local com gramática restrita mostrou-se superior à transcrição livre para uma
+frase de ativação curta e fora do vocabulário. As frases distratoras funcionam como uma classe de
+rejeição explícita, o que explica a ausência de falsos positivos na calibração. Os testes com a voz
+real, por outro lado, mostraram que a qualidade da captação é tão importante quanto o algoritmo: com o
+microfone a 37\% de entrada, nenhum ajuste de gramática resolveria o problema. O ganho automático
+melhorou a situação, mas não substitui um volume de entrada adequado.
+
+\subsection{Memória auditável}
+
+O encadeamento de resumos criptográficos, somado aos gatilhos de somente acréscimo, oferece duas
+camadas de proteção: o próprio banco recusa alterações feitas pelo sistema e por ferramentas comuns, e a
+verificação da cadeia detecta modificações feitas por fora, inclusive com o arquivo aberto em outro
+programa. Como os registros guardam a descrição no momento do fato, a pergunta “o que eu fiz” é
+respondida corretamente mesmo depois da remoção dos itens.
+
+\subsection{Princípios SOLID na prática}
+
+A revisão final mostrou que uma arquitetura em camadas bem definida não impede, por si só, a erosão
+local da qualidade. Mesmo com a separação hexagonal desde a versão 2.0.0, as funções acumularam
+condicionais, o orquestrador absorveu responsabilidades e duas dependências passaram a apontar no
+sentido errado ao longo de nove incrementos. Os princípios SOLID funcionaram como critérios objetivos
+para localizar e corrigir esses pontos, e as funções de aptidão de \textcite{ford2017} tornaram a
+correção permanente. Em vez de depender da atenção de quem altera o código, a violação passa a ser
+apontada pelo próprio processo de verificação.
+
+Um efeito colateral positivo foi a melhoria da tipagem. Ao substituir acessos dinâmicos por contratos
+explícitos, o verificador de tipos encontrou um caso real de uso possivelmente nulo, e a correção do
+princípio de Liskov transformou um risco silencioso de perda de dados em um erro de tipo.
+
+\subsection{Desenvolvimento assistido por inteligência artificial}
+
+A experiência indica que um agente de programação acelera substancialmente a implementação, inclusive
+de refatorações amplas, mas desloca a responsabilidade pela qualidade para as verificações automáticas
+e para a validação com o usuário. Os defeitos mais difíceis do projeto foram identificados por medições
+reais ou por execuções repetidas, como o volume baixo do microfone, a configuração que redirecionava a
+API e o bloqueio da thread pelo coletor de lixo, e não pela leitura do código. Isso reforça o valor das
+práticas de engenharia descritas neste trabalho, que se mostraram complementares ao uso do agente.
+
+\section{Limitações}
+
+As principais limitações identificadas são:
+\begin{enumerate}[label=\alph*)]
+  \item o reconhecimento de comandos e a voz neural dependem de serviços na internet; sem conexão, a
+        conversa livre pode usar o modelo local, mas a voz de reserva também fica indisponível;
+  \item o modelo local executado no processador leva de 15 a 45 s em pedidos que usam ferramentas e,
+        por ser pequeno, só recebe ferramentas que criam ou consultam: concluir, remover e abrir
+        programas exigem os comandos explícitos;
+  \item a tela de configurações mostra os modelos disponíveis, mas a troca do modelo ainda é feita por
+        variáveis de ambiente e vale ao reabrir o assistente;
+  \item a restauração de um backup é manual, com o assistente fechado;
+  \item a gramática restrita foi calibrada apenas para a frase “ok Fael”; outras frases usam a busca
+        fonética livre, menos precisa;
+  \item a calibração da ativação usou cinco vozes sintéticas e a voz de um único usuário real; uma
+        avaliação com mais pessoas e ambientes ruidosos daria estimativas mais robustas de exatidão;
+  \item os lembretes só são anunciados com o programa aberto; um lembrete vencido com o programa fechado
+        é anunciado na abertura seguinte;
+  \item o pacote de instalação foi construído e testado para Ubuntu 24.04 com Python 3.12; outras
+        versões exigem reconstruí-lo na própria máquina, e as fotografias pessoais seguem dentro do
+        pacote;
+  \item as posições do rosto em cada fotografia foram medidas manualmente; um novo avatar exige
+        cadastrar essas posições no catálogo.
+\end{enumerate}

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Robofael — gravar minha voz
+Name[en]=Robofael — record my voice
+Comment=Grava sua voz para o Robofael falar com o seu tom
+Comment[en]=Records your voice so Robofael speaks with your pitch
+Exec=robofael-gravar-voz
+Icon=robofael
+Terminal=false
+Categories=Utility;
+StartupWMClass=robofael

@@ -1,0 +1,58 @@
+\chapter{Conclusão}
+
+Este trabalho apresentou o Robofael, um assistente pessoal de atividades diárias para Linux que
+conversa por voz, é representado por um avatar animado criado a partir das fotografias do usuário,
+organiza tarefas e lembretes, mantém uma memória de longo prazo auditável, abre programas instalados,
+funciona em português e em inglês e pode ser instalado no Ubuntu por um pacote padrão. Sem o Claude, um
+modelo de linguagem local assume a conversa; e a tela de configurações permite escolher o microfone,
+abrir o assistente com o computador, mudar o banco de lugar e fazer backups conferidos. O problema de
+pesquisa, que buscava construir um assistente responsivo, respeitoso com a privacidade, com histórico
+confiável e estrutura interna fácil de evoluir, foi respondido com uma solução que combina decisões
+arquiteturais e verificações automáticas.
+
+Os objetivos específicos foram atingidos. O avatar em formato de busto, com boca sincronizada em
+36 combinações de abertura e formato, foi gerado a partir das fotografias. O ciclo de conversa em
+pipeline reduziu a espera à primeira frase da resposta. A ativação pela frase “ok Fael” é processada
+localmente, com gramática restrita e zero falsos positivos na calibração. A memória de longo prazo em
+SQLite é somente de acréscimo e protegida por cadeia de resumos SHA-256, e responde perguntas sobre dias,
+semanas e outros períodos. A integração com o ambiente Linux abre programas por nome ou sinônimo. A
+internacionalização permite trocar o idioma ao vivo. O instalador para Ubuntu foi testado em ambiente
+isolado. Por fim, a revisão segundo os princípios SOLID e as práticas de código limpo foi acompanhada de
+testes de arquitetura que tornam essas regras permanentes. Os requisitos funcionais e não funcionais
+foram especificados, rastreados até os testes e documentados, assim como todo o processo de construção.
+
+Como contribuição, além do próprio artefato de software, o trabalho mostra de forma concreta como os
+princípios SOLID se materializam em um sistema concorrente, com integração a serviços externos e
+interface gráfica: classes com uma única responsabilidade no lugar de um coordenador sobrecarregado;
+tabelas extensíveis no lugar de cadeias de condicionais; contratos pequenos e pertencentes à camada que
+deles precisa; e um caso real em que respeitar o princípio de Liskov transformou uma perda silenciosa
+de dados em um erro detectado pelo verificador de tipos. O trabalho também mostra que testes de
+arquitetura, limites de complexidade e cobertura mínima, verificados continuamente, preservam a
+qualidade estrutural ao longo da evolução, inclusive quando a implementação é acelerada por um agente
+de inteligência artificial. O Incremento 16 ilustra o valor de otimizar a partir de
+medições: com uma camada que só repassa à biblioteca gráfica o que mudou, imagens opacas e uma taxa de
+quadros adaptativa, o consumo em repouso caiu de 29\% para 5\% de um núcleo, sem alterar a aparência,
+e um teste determinístico passou a impedir que esse ganho se perca. Por fim, os quatro últimos
+incrementos mostram que a arquitetura absorveu um novo cérebro, novos dispositivos e novas operações
+sobre os dados apenas com portas e adaptadores novos, e que um modelo pequeno se torna útil quando o
+sistema limita o que ele pode fazer.
+
+\section{Trabalhos futuros}
+
+A partir das limitações identificadas, sugerem-se as seguintes evoluções:
+\begin{enumerate}[label=\alph*)]
+  \item adotar reconhecimento de comandos e síntese de voz locais, que, somados ao modelo de linguagem
+        local já existente, eliminariam a dependência de internet para as funções principais;
+  \item permitir escolher o modelo de linguagem na própria tela de configurações, com troca ao vivo;
+  \item restaurar backups pela interface e criar backups automáticos periódicos;
+  \item gerar automaticamente a gramática restrita de qualquer frase de ativação, com frases distratoras
+        obtidas por semelhança fonética;
+  \item avaliar a exatidão da ativação com um grupo maior de pessoas, sotaques e níveis de ruído;
+  \item detectar automaticamente os pontos do rosto em novas fotografias, dispensando o cadastro manual;
+  \item executar o agendador como serviço do sistema, para anunciar lembretes mesmo com a janela fechada;
+  \item sincronizar a memória entre computadores com criptografia de ponta a ponta, mantendo a cadeia de
+        integridade;
+  \item publicar o pacote em um repositório próprio, com assinatura, para atualizações automáticas pelo
+        gerenciador de pacotes;
+  \item adicionar novos idiomas, aproveitando o catálogo e o teste de completude das traduções.
+\end{enumerate}

@@ -1,0 +1,114 @@
+\chapter{Metodologia}
+
+Este capítulo descreve o tipo de pesquisa, o processo de desenvolvimento, o ambiente e as ferramentas
+utilizadas e os critérios adotados para validar o sistema.
+
+\section{Caracterização da pesquisa}
+
+Quanto à natureza, trata-se de pesquisa aplicada, voltada à solução de um problema concreto por meio
+da construção de um artefato de software. Quanto aos procedimentos, caracteriza-se como um estudo de
+caso de desenvolvimento, no qual o próprio processo de construção, as decisões de projeto e os
+problemas encontrados constituem objeto de análise. A abordagem é predominantemente qualitativa,
+complementada por medidas quantitativas de qualidade interna, como o número de testes, a cobertura de
+código, a complexidade ciclomática e o tamanho dos módulos, e de desempenho, como os tempos de
+inicialização, de resposta e de interrupção.
+
+\section{Processo de desenvolvimento}
+
+Adotou-se um processo iterativo e incremental \cite{larman2003}. Cada incremento partiu de um pedido
+do usuário, que atuou simultaneamente como cliente e como responsável pelas decisões de produto, e
+terminou com o software executável, testado e documentado. Ao todo, foram realizados vinte
+incrementos, descritos no Capítulo 6. Cada um deles seguiu as etapas abaixo:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{entendimento do pedido}: identificação do objetivo e das restrições; quando havia mais
+        de uma solução razoável com consequências diferentes para o usuário, a escolha era submetida a
+        ele, como na decisão entre o reconhecimento local e o remoto da frase de ativação ou no
+        ajuste apenas do tom da voz;
+  \item \textbf{investigação}: leitura do código afetado, medições, como volume do microfone,
+        transcrições reais e tempos de execução, e experimentos curtos para confirmar hipóteses;
+  \item \textbf{implementação}: alterações pequenas e reversíveis, preservando a arquitetura existente;
+  \item \textbf{verificação}: execução da suíte de testes, da análise estática de estilo e de
+        complexidade (ruff) e da verificação de tipos (mypy); acréscimo de testes para todo
+        comportamento novo ou defeito corrigido;
+  \item \textbf{validação com o usuário}: execução real do assistente, com análise de registros
+        detalhados (opção \cod{-v}) para calibrar parâmetros como limiares de detecção e ganho do
+        microfone;
+  \item \textbf{documentação}: atualização do arquivo README, do registro de mudanças (CHANGELOG) e do
+        número de versão segundo o versionamento semântico \cite{semver}.
+\end{enumerate}
+
+\section{Desenvolvimento assistido por agente de inteligência artificial}
+
+A implementação foi realizada com o apoio do Claude Code, um agente de programação baseado em modelo de
+linguagem que lê e edita arquivos, executa comandos e testes e interage com o usuário em linguagem
+natural. O usuário definiu os objetivos e as prioridades, tomou as decisões de produto e validou o
+comportamento em uso real; o agente propôs e implementou as soluções, executou as verificações e
+relatou os resultados. Esse arranjo impôs uma disciplina adicional: como uma alteração pode ser
+produzida rapidamente, a garantia de que ela não degrada o sistema precisa vir de verificações
+automáticas. Por isso, testes, limites de complexidade, verificação de tipos e testes de arquitetura
+foram tratados como parte do produto, e não como atividades opcionais.
+
+\section{Ambiente e ferramentas}
+
+O Quadro~\ref{qua:ferramentas} relaciona as tecnologias utilizadas e a finalidade de cada uma.
+
+\begin{singlespace}
+\legendaquadro{Tecnologias e ferramentas utilizadas}\label{qua:ferramentas}
+\small
+\begin{tabularx}{\textwidth}{|P{4.3cm}|L|}
+\hline
+\textbf{Tecnologia} & \textbf{Finalidade no projeto} \\ \hline
+\endfirsthead
+\hline
+\textbf{Tecnologia} & \textbf{Finalidade no projeto} \\ \hline
+\endhead
+Python 3.12 (compatível com 3.10 ou superior) & Linguagem de implementação \\ \hline
+Tkinter & Interface gráfica (janela, palco do avatar, painel e configurações) \\ \hline
+Pillow e NumPy \cite{harris2020} & Recorte, nitidez, troca de roupa e geração dos quadros do avatar; análise de áudio \\ \hline
+SpeechRecognition e PyAudio & Captura do microfone e reconhecimento de fala pelo serviço do Google \\ \hline
+Vosk (modelo \cod{vosk-model-small-pt-0.3}) & Reconhecimento local da frase de ativação, com gramática restrita \\ \hline
+edge-tts e gTTS & Síntese de voz neural com ajuste de tom e ritmo; voz de reserva \\ \hline
+pygame & Decodificação e reprodução do áudio em memória \\ \hline
+SDK oficial da Anthropic (Claude, modelo \cod{claude-opus-5-5}) & Compreensão de linguagem natural com ferramentas e transmissão em fluxo contínuo \\ \hline
+SQLite & Agenda, histórico auditável e preferências \\ \hline
+pytest e pytest-cov & Testes automatizados e medição de cobertura \\ \hline
+ruff & Análise estática de estilo, de defeitos comuns e de complexidade \\ \hline
+mypy & Verificação estática de tipos \\ \hline
+pre-commit e GitHub Actions com Xvfb & Verificações antes de cada versão e integração contínua, inclusive da interface gráfica \\ \hline
+dpkg-deb e fakeroot & Construção do pacote de instalação para Ubuntu \\ \hline
+GNU Make & Automação das tarefas de desenvolvimento \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+O ambiente de desenvolvimento e de testes foi um computador com Ubuntu 24.04 (núcleo Linux 6.8),
+oito núcleos de processamento, microfone interno e um microfone USB, com Python 3.12 em ambiente
+virtual isolado.
+
+\section{Critérios de validação}
+
+O sistema foi considerado válido quando atendeu, simultaneamente, aos critérios a seguir:
+
+\begin{enumerate}[label=\alph*)]
+  \item todos os testes automatizados aprovados, inclusive os de interface gráfica e os de
+        arquitetura;
+  \item nenhuma ocorrência apontada pela análise estática de estilo e de complexidade, com
+        complexidade ciclomática máxima de 10 por função, nem pela verificação de tipos;
+  \item cada requisito funcional associado a pelo menos um teste automatizado ou a um procedimento de
+        verificação manual documentado (Apêndice A);
+  \item metas de desempenho atingidas, conforme os requisitos não funcionais;
+  \item instalador testado em ambiente isolado, sem alterar o sistema;
+  \item execução real do assistente pelo usuário, com as funções principais operando.
+\end{enumerate}
+
+Para a revisão segundo os princípios SOLID, adotou-se o critério de preservação do comportamento: a
+suíte completa deveria permanecer aprovada após cada passo de refatoração e, quando a alteração
+afetasse a geração de imagens, a saída deveria permanecer idêntica pixel a pixel.
+
+\section{Normalização do documento}
+
+Este documento segue as normas da Associação Brasileira de Normas Técnicas para trabalhos acadêmicos
+\cite{abnt14724}, referências \cite{abnt6023} e citações \cite{abnt10520}. Por se tratar de uma
+documentação exclusivamente textual, os fluxos e as estruturas do sistema são descritos em prosa, em
+listas numeradas e em quadros, sem ilustrações gráficas.

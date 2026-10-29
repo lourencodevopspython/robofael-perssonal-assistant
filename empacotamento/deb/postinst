@@ -1,0 +1,22 @@
+#!/bin/sh
+# Cria o ambiente Python do Robofael a partir das dependências que vêm no pacote (sem internet).
+set -e
+PREFIXO="${ROBOFAEL_PREFIXO:-/opt/robofael}"
+
+case "$1" in
+    configure)
+        rm -rf "$PREFIXO/venv"
+        # --system-site-packages: usa o PyAudio e o Tk do sistema (instalados pelo apt)
+        python3 -m venv --system-site-packages "$PREFIXO/venv"
+        # Instala exatamente as versões que vêm no pacote, ignorando as do sistema (ex.: o Pillow do
+        # apt não tem o ImageTk); só o PyAudio vem do sistema. --no-deps: o conjunto já está completo.
+        "$PREFIXO/venv/bin/python" -m pip install --quiet --no-index --no-deps --ignore-installed \
+            --disable-pip-version-check "$PREFIXO"/wheels/*.whl
+        "$PREFIXO/venv/bin/python" -m pip check --disable-pip-version-check >/dev/null
+        if [ -z "$ROBOFAEL_PREFIXO" ]; then
+            command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q /usr/share/applications || true
+            command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -q -t /usr/share/icons/hicolor || true
+        fi
+        ;;
+esac
+exit 0

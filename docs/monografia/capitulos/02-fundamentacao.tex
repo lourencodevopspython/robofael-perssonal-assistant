@@ -1,0 +1,192 @@
+\chapter{Fundamentação teórica}
+
+Este capítulo reúne os conceitos que sustentam as decisões tomadas no projeto. Inicialmente são
+tratados os assistentes de voz e as tecnologias de fala; em seguida, os modelos de linguagem e o uso
+de ferramentas; por fim, os fundamentos de engenharia de software que orientaram a organização do
+código: arquitetura hexagonal, princípios SOLID, código limpo, métricas de complexidade, testes
+automatizados e qualidade de software.
+
+\section{Assistentes pessoais por voz}
+
+Um assistente pessoal por voz é um sistema interativo que recebe pedidos falados, interpreta a
+intenção do usuário, executa ações e devolve uma resposta, também falada. Segundo
+\textcite{jurafsky2009}, sistemas de diálogo orientados a tarefas combinam tradicionalmente três
+componentes: o reconhecimento automático de fala, que converte o sinal acústico em texto; a
+compreensão da linguagem, que identifica a intenção e os parâmetros do pedido; e a geração e a síntese
+da resposta. Entre esses componentes, um gerenciador de diálogo decide quando ouvir, quando responder
+e como lidar com interrupções.
+
+A qualidade percebida de um assistente depende fortemente da latência entre o fim da fala do usuário
+e o início da resposta. \textcite{nielsen1993} associa tempos de resposta próximos de um segundo à
+manutenção do fluxo de pensamento do usuário; acima de dez segundos, a atenção se perde. Em um
+assistente de voz, a espera inclui a detecção do fim da fala, o reconhecimento, a geração do texto e
+a síntese do áudio, o que motiva arquiteturas que processam essas etapas de forma sobreposta, em vez
+de sequencial.
+
+\section{Processamento de fala}
+
+\subsection{Detecção de atividade de voz}
+
+A detecção de atividade de voz (\en{Voice Activity Detection}, VAD) separa os trechos com fala dos
+trechos com silêncio ou ruído. Abordagens clássicas comparam a energia do sinal com um limiar estimado a
+partir do ruído de fundo, enquanto abordagens estatísticas modelam a distribuição do ruído e da fala
+\cite{sohn1999}. No Robofael, a detecção é usada para decidir quando o usuário começou e terminou uma
+frase. Para isso, calibra-se o limiar a partir do ruído medido na abertura do microfone e exige-se uma
+pausa mínima para encerrar a captura. Ruídos curtos, como cliques, são descartados.
+
+\subsection{Reconhecimento automático de fala}
+
+O reconhecimento automático de fala (\en{Speech-to-Text}, STT) converte o áudio em texto. Sistemas
+modernos combinam modelos acústicos e de linguagem treinados em grandes volumes de dados
+\cite{jurafsky2009}. O projeto emprega dois reconhecedores com papéis complementares. O primeiro é o
+Vosk, construído sobre o conjunto de ferramentas Kaldi \cite{povey2011}, que roda inteiramente no
+computador e permite restringir o vocabulário a uma gramática fechada \cite{alphacephei}. O segundo é
+o serviço de reconhecimento do Google, mais preciso para frases livres, usado apenas depois que o
+usuário chama o assistente. A gramática restrita é especialmente útil para frases de ativação curtas,
+que um reconhecedor de vocabulário aberto tende a confundir com palavras mais frequentes.
+
+\subsection{Síntese de fala e prosódia}
+
+A síntese de fala (\en{Text-to-Speech}, TTS) produz áudio a partir de texto. Vozes neurais atuais
+permitem ajustar parâmetros prosódicos, como a frequência fundamental (o tom) e a velocidade de
+elocução (o ritmo). A frequência fundamental de uma voz pode ser estimada pela autocorrelação do sinal
+em janelas curtas, procurando o período que maximiza a semelhança do sinal consigo mesmo dentro da
+faixa típica da voz humana, entre 60 Hz e 400 Hz \cite{jurafsky2009}. O Robofael usa essa estimativa
+para comparar a voz gravada do usuário com a voz sintética e calcular o deslocamento de tom e de ritmo
+que as aproxima.
+
+\section{Modelos de linguagem de grande porte e uso de ferramentas}
+
+Os modelos de linguagem de grande porte baseiam-se na arquitetura \en{Transformer}, cujo mecanismo de
+atenção permite modelar dependências de longo alcance no texto \cite{vaswani2017}. Além de gerar texto,
+esses modelos podem ser instruídos a solicitar a execução de funções externas, as chamadas ferramentas
+(\en{tools}): o modelo devolve o nome da ferramenta e os argumentos em formato estruturado; a aplicação
+executa a função e devolve o resultado; e o modelo continua a resposta. A API do Claude oferece esse
+mecanismo com transmissão em fluxo contínuo (\en{streaming}) do texto e das entradas das ferramentas
+\cite{anthropic}. Quando as entradas são transmitidas antes de estarem completas, cabe à aplicação
+validá-las contra o esquema declarado antes de executar qualquer ação, porque uma entrada truncada não
+pode ser tratada como válida.
+
+Modelos menores, com alguns bilhões de parâmetros, podem ser executados no próprio computador por
+servidores locais como o Ollama, que expõe uma API HTTP de conversa com suporte a ferramentas
+\cite{ollama}. A execução local dispensa a conexão e não envia o texto a terceiros, mas, sem placa de
+vídeo, as respostas são mais lentas, e modelos pequenos tendem a escolher ferramentas com menos
+precisão. Neste trabalho, essa diferença foi tratada restringindo as ferramentas oferecidas ao modelo
+local (Capítulo 6).
+
+\section{Arquitetura de software}
+
+\subsection{Arquitetura hexagonal}
+
+A arquitetura hexagonal, também chamada de arquitetura de portas e adaptadores, foi proposta por
+\textcite{cockburn2005} com o objetivo de isolar a lógica da aplicação dos mecanismos de entrada e
+saída. A aplicação define \emph{portas}, isto é, interfaces que descrevem o que ela precisa do mundo
+externo ou o que oferece a ele, e cada tecnologia concreta é conectada por meio de um
+\emph{adaptador} que implementa a porta. Com isso, banco de dados, interface gráfica, serviços de
+voz e modelos de linguagem tornam-se substituíveis, e a lógica central pode ser testada com dublês
+simples. \textcite{martin2019} generaliza a ideia na chamada regra de dependência: as dependências de
+código-fonte devem apontar sempre para dentro, das camadas de detalhe para as camadas de política.
+
+\subsection{Domínio, aplicação e raiz de composição}
+
+\textcite{evans2004} propõe que as regras de negócio sejam expressas em um modelo de domínio
+independente de infraestrutura, com entidades, objetos de valor e serviços de domínio. Os casos de uso
+que coordenam esse modelo formam a camada de aplicação. A ligação entre abstrações e implementações
+concretas é feita por injeção de dependências \cite{fowler2004}, idealmente concentrada em um único
+ponto do programa, a raiz de composição, que monta o grafo de objetos na inicialização.
+
+\subsection{Padrões de projeto empregados}
+
+Diversos padrões catalogados por \textcite{gamma1994} aparecem na solução: o \en{Observer}, na forma
+de um barramento de eventos que desacopla produtores e consumidores; o \en{State}, em uma máquina de
+estados explícita que controla o ciclo de conversa; o \en{Strategy} e a \en{Chain of Responsibility},
+nas cadeias de interpretadores de intenções e de períodos; e o \en{Adapter}, nos componentes que
+encapsulam bibliotecas externas.
+
+\subsection{Funções de aptidão arquitetural}
+
+\textcite{ford2017} propõem tratar características arquiteturais desejadas como funções de aptidão
+(\en{fitness functions}): verificações objetivas e, preferencialmente, automatizadas, executadas
+continuamente para indicar se a arquitetura ainda atende ao que se espera dela. Um exemplo é um teste
+que inspeciona as dependências entre módulos e falha quando uma camada interna passa a depender de uma
+externa. Essa ideia fundamenta os testes de arquitetura descritos no Capítulo 7.
+
+\section{Princípios SOLID}
+
+O acrônimo SOLID reúne cinco princípios de projeto orientado a objetos sistematizados por
+\textcite{martin2003}:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{princípio da responsabilidade única} (\en{Single Responsibility Principle}, SRP): um
+        módulo deve ter um, e apenas um, motivo para mudar; em outras palavras, deve responder a um único
+        ator ou preocupação \cite{martin2019};
+  \item \textbf{princípio aberto/fechado} (\en{Open-Closed Principle}, OCP): entidades de software
+        devem estar abertas para extensão e fechadas para modificação, formulação atribuída a
+        \textcite{meyer1988}; acrescentar um comportamento não deve exigir a alteração de código que já
+        funciona;
+  \item \textbf{princípio da substituição de Liskov} (\en{Liskov Substitution Principle}, LSP):
+        objetos de um subtipo devem poder substituir objetos do tipo base sem alterar as propriedades
+        desejáveis do programa \cite{liskov1994};
+  \item \textbf{princípio da segregação de interfaces} (\en{Interface Segregation Principle}, ISP):
+        clientes não devem ser forçados a depender de métodos que não usam, o que favorece interfaces
+        pequenas e específicas;
+  \item \textbf{princípio da inversão de dependência} (\en{Dependency Inversion Principle}, DIP):
+        módulos de alto nível não devem depender de módulos de baixo nível; ambos devem depender de
+        abstrações.
+\end{enumerate}
+
+Na linguagem Python, as abstrações exigidas pelo DIP e pelo ISP podem ser expressas por protocolos
+(\cod{typing.Protocol}), que definem contratos verificados estruturalmente pelo verificador de tipos,
+sem exigir herança explícita \cite{pep544}. Essa característica é explorada em todo o projeto.
+
+\section{Código limpo e refatoração}
+
+\textcite{martin2009} caracteriza o código limpo como aquele que é fácil de ler e de modificar por
+outras pessoas: nomes que revelam a intenção, funções pequenas que fazem uma única coisa, poucos
+argumentos, ausência de duplicação e de efeitos colaterais ocultos, e tratamento de erros que não
+obscurece a lógica. O princípio da não repetição (\en{Don't Repeat Yourself}) de
+\textcite{hunt1999} complementa essas práticas. A refatoração, segundo \textcite{fowler2018}, é a
+alteração da estrutura interna do software sem mudar seu comportamento observável, feita em pequenos
+passos e protegida por testes automatizados. Entre as técnicas aplicadas neste trabalho estão a
+extração de classe, a extração de função, a substituição de condicionais por polimorfismo ou por
+tabelas de despacho e a introdução de objetos-parâmetro.
+
+\section{Métricas de complexidade}
+
+A complexidade ciclomática, proposta por \textcite{mccabe1976}, mede o número de caminhos linearmente
+independentes no grafo de controle de uma função. Ela corresponde, de forma aproximada, ao número de
+decisões mais um. Valores altos indicam funções difíceis de entender e de testar por completo, e o
+limite de 10 sugerido pelo próprio autor é amplamente adotado como teto prático. Neste trabalho, a
+métrica foi usada tanto para localizar os pontos que precisavam de refatoração quanto como regra
+permanente do analisador estático.
+
+\section{Testes automatizados}
+
+O desenvolvimento orientado a testes, descrito por \textcite{beck2003}, popularizou a prática de
+escrever testes automatizados pequenos e rápidos que documentam o comportamento esperado.
+\textcite{cohn2009} propõe a pirâmide de testes: muitos testes unitários na base, uma quantidade menor
+de testes de integração e poucos testes de ponta a ponta, que são mais lentos e frágeis.
+\textcite{meszaros2007} cataloga os dublês de teste, como \en{stubs}, \en{fakes} e \en{spies}, que
+substituem colaboradores reais para isolar o comportamento sob teste. A combinação de arquitetura
+hexagonal com dublês permite testar a lógica de conversa sem microfone, sem alto-falante e sem rede.
+
+\section{Qualidade de software}
+
+A norma ISO/IEC 25010 define um modelo de qualidade de produto com características como adequação
+funcional, eficiência de desempenho, compatibilidade, usabilidade, confiabilidade, segurança,
+manutenibilidade e portabilidade \cite{iso25010}. Esse modelo foi usado como referência para organizar
+os requisitos não funcionais do Capítulo 4. Na engenharia de requisitos, \textcite{sommerville2018} e
+\textcite{pressman2016} distinguem os requisitos funcionais, que descrevem o que o sistema deve fazer,
+dos requisitos não funcionais, que restringem como ele o faz, distinção também adotada neste
+trabalho.
+
+\section{Integridade de dados e históricos auditáveis}
+
+Um histórico é auditável quando permite reconstruir o que aconteceu e detectar alterações indevidas.
+Duas técnicas complementares sustentam essa propriedade no projeto. A primeira é o armazenamento
+somente de acréscimo: os registros nunca são alterados nem removidos, e restrições do próprio banco de
+dados recusam essas operações. A segunda é o encadeamento de resumos criptográficos: cada registro
+guarda o resumo SHA-256 \cite{nist2015} do anterior, de modo que qualquer modificação, remoção ou
+inserção indevida quebra a cadeia a partir do ponto alterado. O banco de dados SQLite oferece
+transações atômicas e gatilhos (\en{triggers}) adequados para implementar essas garantias em um único
+arquivo local \cite{sqlite}.

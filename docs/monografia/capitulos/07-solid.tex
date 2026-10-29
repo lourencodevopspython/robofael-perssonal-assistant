@@ -1,0 +1,198 @@
+\chapter{Revisão segundo os princípios SOLID e o código limpo}
+
+Este capítulo detalha o último incremento: a validação do projeto de ponta a ponta à luz dos princípios
+SOLID \cite{martin2003} e das práticas de código limpo \cite{martin2009}. A revisão seguiu a disciplina
+de refatoração descrita por \textcite{fowler2018}: passos pequenos, comportamento preservado e suíte de
+testes executada após cada passo.
+
+\section{Diagnóstico}
+
+O diagnóstico combinou três fontes: a leitura dos módulos maiores; a análise estática com regras
+adicionais de complexidade (complexidade ciclomática, número de retornos, de ramificações e de comandos
+por função), de nomenclatura e de parâmetros sem uso; e o levantamento automático do grafo de
+importações entre as camadas. Os principais achados foram:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{SRP}: o orquestrador, com 343 linhas, acumulava o ciclo de conversa, o pipeline de fala
+        em três estágios e a escuta passiva; o método que transformava texto em fala tinha complexidade
+        ciclomática 20 e 57 comandos. A raiz de composição continha regras do produto (escolha de voz,
+        idioma, ativação e saudação), e a janela principal aplicava preferências diretamente nos serviços;
+  \item \textbf{OCP}: o executor de ferramentas, o interpretador de intenções do modo offline e o
+        interpretador de períodos eram cadeias de condicionais (complexidade 12, 12 e 13), que precisavam
+        ser editadas a cada nova ferramenta, intenção ou expressão;
+  \item \textbf{DIP}: o núcleo da sessão dependia da classe concreta do banco SQLite; o domínio importava
+        contratos da camada de portas (sentido inverso ao desejado); e a ferramenta de gravação de voz
+        criava adaptadores por conta própria, sem passar pela raiz de composição;
+  \item \textbf{ISP}: a interface acessava o sintetizador e o reprodutor por inspeção dinâmica de
+        atributos, sem contrato, e o gravador guardava o microfone como um objeto de tipo indeterminado;
+  \item \textbf{LSP}: o repositório JSON legado declarava a assinatura do contrato de persistência da
+        agenda, mas ignorava os registros de auditoria, de modo que substituí-lo pelo SQLite perderia o
+        histórico em silêncio;
+  \item \textbf{código limpo}: uma função de desenho da camisa do avatar com 57 comandos e variáveis de
+        uma letra maiúscula; a extração do comando de voz com complexidade 12 e limiares numéricos sem
+        nome; um diálogo de configurações com dez parâmetros; e parâmetros não usados em funções anônimas.
+\end{enumerate}
+
+\section{Responsabilidade única}
+
+\subsection{Divisão do orquestrador}
+
+O orquestrador foi dividido em três classes, cada uma com um único motivo para mudar:
+
+\begin{enumerate}[label=\alph*)]
+  \item \cod{PipelineFala} (\cod{aplicacao/pipeline.py}) transforma um fluxo de texto em fala. Cada
+        estágio virou um método curto (pensar, sintetizar e tocar), e o retorno é um objeto imutável com o
+        texto falado e a indicação de interrupção;
+  \item \cod{VigiaAtivacao} (\cod{aplicacao/vigia.py}) cuida exclusivamente da escuta passiva: reserva
+        e libera o microfone sob uma trava, conta falhas seguidas e se desliga com aviso. Ela recebe por
+        injeção duas funções: uma que informa se há interação em andamento e outra a ser chamada quando a
+        ativação ocorrer;
+  \item \cod{Orquestrador} passou a apenas coordenar: decide quando ouvir, pensar e falar, garante uma
+        interação por vez e encaixa os anúncios entre as interações.
+\end{enumerate}
+
+A interface pública do orquestrador foi preservada. Para isso, atributos como o reprodutor, o
+sintetizador e o detector de ativação tornaram-se propriedades que delegam aos colaboradores, e os
+testes existentes continuaram válidos sem alteração. O tamanho do módulo caiu de 343 para 255 linhas, e
+o método de fala passou de complexidade 20 para 2.
+
+\subsection{Sessão separada da composição e da interface}
+
+As políticas da sessão foram movidas para \cod{aplicacao/sessao.py}: precedência do idioma, escolha da
+voz (preferência, perfil gravado e padrão), ativação inicial, texto da saudação, troca de idioma ao vivo
+e aplicação das preferências salvas. A raiz de composição ficou restrita a escolher e conectar
+implementações. A janela principal, por sua vez, deixou de aplicar regras: ao salvar as configurações,
+ela delega à sessão e apenas retraduz os componentes visuais e troca o avatar.
+
+\section{Aberto para extensão, fechado para modificação}
+
+Três despachos condicionais foram substituídos por estruturas extensíveis:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{ferramentas do modelo}: o executor mantém uma tabela que associa o nome de cada
+        ferramenta a um método. A execução reduziu-se a validar a entrada e chamar a ação correspondente
+        (complexidade 1). Acrescentar uma ferramenta significa declarar seu esquema e registrar um método,
+        e um teste garante que toda ferramenta declarada tem uma ação e vice-versa;
+  \item \textbf{intenções do modo offline}: cada intenção (histórico, anotar, concluir, lembrar, abrir
+        programa, listar pendentes, hora e data) é um método que devolve a resposta ou nada. O modelo
+        percorre a cadeia em ordem e responde com a primeira intenção que se aplicar, no padrão de cadeia
+        de responsabilidade \cite{gamma1994}. A ordem da cadeia expressa a regra de negócio de que comandos
+        de agenda têm prioridade sobre a abertura de programas;
+  \item \textbf{períodos}: cada forma de expressar um período virou uma função interpretadora pequena,
+        que recebe um contexto imutável (texto normalizado, data de referência e idioma) e devolve o
+        período ou nada. A lista ordenada, do mais específico para o mais genérico, substituiu a função
+        com complexidade 13 por uma de complexidade 1.
+\end{enumerate}
+
+\section{Substituição de Liskov}
+
+O banco SQLite foi verificado contra todos os contratos de persistência (agenda, histórico,
+preferências e o contrato combinado). O repositório JSON, que desde a versão 3.0.0 serve apenas para
+ler o formato legado durante a migração, não guarda o histórico de auditoria. Sua assinatura, porém,
+aceitava os registros e os descartava, o que o tornava um falso substituto: o verificador de tipos
+aceitaria usá-lo no lugar do banco, e a memória de longo prazo seria perdida em silêncio. O parâmetro foi
+removido. Com isso, o repositório deixou de satisfazer o contrato da agenda, e o próprio verificador de
+tipos passou a impedir a substituição indevida, aplicando a noção comportamental de subtipo de
+\textcite{liskov1994}.
+
+\section{Segregação de interfaces}
+
+Foram criadas duas portas pequenas para eliminar o acesso sem contrato:
+\begin{enumerate}[label=\alph*)]
+  \item \cod{SintetizadorConfiguravel}: um sintetizador cuja voz, tom e ritmo podem ser lidos e trocados
+        ao vivo, usado pela tela de configurações e pela troca de idioma;
+  \item \cod{CapturaAudio}: a capacidade de gravar uma frase sem transcrevê-la, usada pela ferramenta de
+        gravação da voz.
+\end{enumerate}
+A porta \cod{PersistenciaAssistente} foi definida como a combinação dos contratos de agenda, histórico e
+preferências (na versão 3.8.0, somou-se o de arquivo do banco), usada apenas pelo núcleo da sessão; os demais componentes continuam dependendo somente da
+parte de que precisam. A tipagem mais precisa revelou um caso real: o gravador poderia, em tese,
+iniciar uma gravação antes de o microfone existir, e o código passou a repassar explicitamente o
+microfone já verificado.
+
+\section{Inversão de dependência}
+
+Três ajustes alinharam todas as dependências à regra de dependência:
+
+\begin{enumerate}[label=\alph*)]
+  \item o contrato de persistência exigido pela agenda e a entidade que representa um programa
+        instalado foram movidos para o domínio, que passou a não importar nada além do catálogo de
+        mensagens; a camada de portas os reexporta, mantendo a compatibilidade;
+  \item o núcleo da sessão passou a depender da porta de persistência, e não da classe do SQLite; a
+        leitura do perfil de voz passou a ser injetada como uma função;
+  \item a ferramenta de gravação de voz passou a obter o microfone e a reprodução de amostras por meio
+        de fábricas da raiz de composição, deixando de importar adaptadores diretamente.
+\end{enumerate}
+
+\section{Práticas de código limpo}
+
+Além das refatorações associadas aos princípios, foram aplicadas as seguintes práticas:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{funções pequenas}: o desenho da camisa do avatar foi decomposto em etapas com nome
+        (sombreado, tecido, placas dos ombros, gola metálica e linhas luminosas), com um objeto de valor
+        para a geometria da gola; a extração do comando de voz foi dividida em três estratégias nomeadas;
+  \item \textbf{nomes que revelam intenção}: variáveis de uma letra maiúscula foram renomeadas para
+        largura e altura, e os limiares numéricos da extração do comando receberam constantes nomeadas;
+  \item \textbf{poucos argumentos}: o diálogo de configurações passou a receber dois objetos-parâmetro,
+        um com as opções oferecidas e outro com as ações dos botões, em vez de dez argumentos;
+  \item \textbf{sem parâmetros mortos}: parâmetros não usados foram removidos ou marcados explicitamente;
+  \item \textbf{sem duplicação}: a preparação da janela de teste, repetida em dois arquivos de teste,
+        foi unificada.
+\end{enumerate}
+
+Para garantir que o comportamento visual não mudasse, o resumo SHA-256 de todos os 72 quadros dos dois
+avatares foi calculado antes e depois da decomposição da função de desenho, e os resumos coincidiram.
+
+\section{Regras permanentes}
+
+Para que a qualidade obtida não se perdesse nas evoluções seguintes, as regras passaram a ser
+verificadas automaticamente em toda execução de \cod{make verificar} e na integração contínua:
+
+\begin{enumerate}[label=\alph*)]
+  \item complexidade ciclomática máxima de 10 por função \cite{mccabe1976};
+  \item limites de retornos, ramificações e comandos por função;
+  \item convenções de nomenclatura e ausência de parâmetros sem uso;
+  \item verificação estática de tipos sem ocorrências;
+  \item cobertura mínima de 80\% das linhas e ramificações;
+  \item testes de arquitetura, descritos na Seção~\ref{sec:testes-arquitetura}.
+\end{enumerate}
+
+As exceções às regras foram documentadas na própria configuração com sua justificativa. Uma delas
+permite nomes de exceção do domínio em português, como \cod{TarefaNaoEncontrada}, sem o sufixo
+\cod{Error}. Outra libera os dublês de teste de usar todos os argumentos dos contratos que imitam.
+
+\section{Métricas antes e depois}
+
+A Tabela~\ref{tab:metricas} compara as funções e os módulos alterados.
+
+\begin{singlespace}
+\legendatabela{Métricas antes e depois da revisão}\label{tab:metricas}
+\small
+\begin{tabularx}{\textwidth}{LC{2.6cm}C{2.6cm}}
+\toprule
+\textbf{Elemento (métrica)} & \textbf{Antes} & \textbf{Depois} \\ \midrule
+\endfirsthead
+\toprule
+\textbf{Elemento (métrica)} & \textbf{Antes} & \textbf{Depois} \\ \midrule
+\endhead
+Orquestrador (linhas do módulo) & 343 & 255 \\
+Método de fala do orquestrador (complexidade) & 20 & 2 \\
+Execução de ferramentas (complexidade) & 12 & 1 \\
+Interpretação offline (complexidade) & 12 & 3 \\
+Interpretação de períodos (complexidade) & 13 & 1 \\
+Extração do comando de voz (complexidade) & 12 & 5 \\
+Desenho da camisa (comandos na função) & 57 & 22 \\
+Diálogo de configurações (parâmetros) & 10 & 5 \\
+Maior complexidade ciclomática do projeto & 20 & 10 \\
+Ocorrências das novas regras (complexidade, tamanho, nomes e parâmetros) & 22 & 0 \\
+Dependências entre camadas fora da regra & 2 & 0 \\
+Testes automatizados & 508 & 529 \\
+\bottomrule
+\end{tabularx}
+\fonte{elaboração própria (2026), com dados do ruff e do pytest.}
+\end{singlespace}
+
+A redução da complexidade não foi obtida à custa de mais código total: os colaboradores extraídos
+somam linhas, mas cada função passou a ser curta, nomeada e testável isoladamente, o que é o objetivo
+das práticas de código limpo.

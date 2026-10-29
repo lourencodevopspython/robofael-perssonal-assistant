@@ -1,0 +1,18 @@
+Package: robofael
+Version: @VERSAO@
+Section: utils
+Priority: optional
+Architecture: @ARQUITETURA@
+Maintainer: Rafael Lourenço <LourencoCosta@users.noreply.github.com>
+Installed-Size: @TAMANHO@
+Depends: python3 (>= 3.12), python3 (<< 3.13), python3-venv, python3-tk, python3-pyaudio (>= 0.2.13), libportaudio2
+Recommends: libgtk-3-bin, xdg-utils, pulseaudio-utils
+Homepage: https://github.com/
+Description: Assistente pessoal de atividades diárias com avatar e voz
+ O Robofael é um assistente com avatar animado a partir de fotos reais que
+ ouve pelo microfone (ativação por "ok Fael", detectada localmente), responde
+ falando em português ou inglês e organiza tarefas e lembretes.
+ .
+ Inclui memória de longo prazo em SQLite com histórico auditável ("o que eu
+ fiz ontem?"), abertura de programas instalados e integração opcional com o
+ Claude (defina ANTHROPIC_API_KEY); sem chave, funciona em modo offline.

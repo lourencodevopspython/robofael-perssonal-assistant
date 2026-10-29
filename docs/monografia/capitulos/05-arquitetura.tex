@@ -1,0 +1,334 @@
+\chapter{Arquitetura e projeto}
+
+Este capítulo descreve a organização do Robofael: as camadas e seus módulos, os contratos entre elas,
+o modelo de dados, o modelo de concorrência e os principais fluxos de execução. Por se tratar de uma
+documentação textual, os fluxos são apresentados como sequências numeradas de passos.
+
+\section{Visão geral}
+
+O Robofael é uma aplicação de área de trabalho escrita em Python, distribuída como o pacote
+\cod{robofael} e executada como um único processo. A arquitetura segue o
+modelo hexagonal \cite{cockburn2005}: no centro estão o domínio e os casos de uso; nas bordas, os
+adaptadores para cada tecnologia; e um único ponto, a raiz de composição, conhece as implementações
+concretas e monta o sistema. A regra de dependência \cite{martin2019} é respeitada em todo o código e
+verificada por testes automatizados (Seção~\ref{sec:testes-arquitetura}).
+
+\section{Camadas e módulos}
+
+O Quadro~\ref{qua:camadas} descreve as camadas, os módulos que as compõem e as dependências
+permitidas a cada uma.
+
+\begin{singlespace}
+\legendaquadro{Camadas da arquitetura, módulos e dependências permitidas}\label{qua:camadas}
+\small
+\begin{tabularx}{\textwidth}{|P{3.0cm}|L|P{3.4cm}|}
+\hline
+\textbf{Camada} & \textbf{Módulos e responsabilidade} & \textbf{Pode depender de} \\ \hline
+\endfirsthead
+\hline
+\textbf{Camada} & \textbf{Módulos e responsabilidade} & \textbf{Pode depender de} \\ \hline
+\endhead
+Domínio (\cod{dominio}) & Entidades e regras puras: \cod{modelos} (tarefa, lembrete, registro de
+auditoria), \cod{agenda} (serviço de domínio transacional), \cod{repositorios} (contrato de
+persistência exigido pela agenda), \cod{estados} (máquina de estados), \cod{eventos}, \cod{linguagem}
+(despedidas, pedidos de nova conversa, perguntas sobre o histórico), \cod{periodos} (interpretação de
+períodos), \cod{programas} (busca do programa pedido) e \cod{ativacao} (gramática e busca fonética da
+frase de ativação). & Somente \cod{i18n} \\ \hline
+Portas (\cod{portas}) & Contratos (\cod{Protocol}) pequenos: modelo de linguagem, reconhecedor de
+fala, captura de áudio, detector de ativação, sintetizador (simples e configurável), reprodutor de
+áudio, consulta ao histórico, preferências, arquivo do banco (mudar de lugar e copiar), persistência
+completa, lançador de programas, dispositivos de áudio, inicialização com o sistema e catálogo de modelos
+de linguagem. & Domínio \\ \hline
+Aplicação (\cod{aplicacao}) & Casos de uso e políticas: \cod{orquestrador} (ciclo de conversa),
+\cod{pipeline} (texto em fala, em fluxo contínuo), \cod{vigia} (escuta passiva), \cod{sessao}
+(políticas de voz, idioma, ativação, microfone e saudação; mudança e backup do banco; modelos
+disponíveis), \cod{memoria} (“o que eu fiz”), \cod{programas},
+\cod{agendador} (lembretes), \cod{barramento} (eventos entre threads) e \cod{frases} (divisor
+incremental de frases). & Domínio, portas, \cod{i18n} e \cod{configuracao} \\ \hline
+Adaptadores (\cod{adaptadores}) & Tecnologias concretas: \cod{claude} (modelo com ferramentas e
+catálogo de modelos), \cod{ollama} (modelo local com respostas em camadas e catálogo dos modelos
+instalados),
+\cod{ferramentas} (esquemas, validação e execução), \cod{offline} (intenções locais), \cod{sqlite}
+(memória de longo prazo), \cod{microfone} (captura e reconhecimento), \cod{ativacao_vosk},
+\cod{sintetizador} (edge-tts e gTTS com cache), \cod{reprodutor} (pygame), \cod{programas_linux}
+(entradas \cod{.desktop}), \cod{dispositivos_audio} (microfones do servidor de áudio),
+\cod{inicializacao_linux} (abertura com o computador e comando no terminal), \cod{alsa}
+(silenciamento de mensagens nativas) e \cod{repositorio_json}
+(leitura do formato legado). & Domínio, portas, aplicação, \cod{audio} e \cod{i18n} \\ \hline
+Núcleos de processamento (\cod{audio}, \cod{avatar}) & Processamento de sinais (tom, envelope de
+volume e timbre, detecção de fala, ganho automático, perfil de voz) e geração das imagens do avatar
+(catálogo, renderização paralela com cache e suavização da animação). & \cod{configuracao} e \cod{i18n} \\ \hline
+Apresentação (\cod{apresentacao}) & Interface Tkinter: \cod{app} (janela principal), \cod{palco}
+(avatar, anéis de estado e legendas), \cod{cena} (canvas diferencial), \cod{laco} (laço de quadros
+adaptativo e fila de trabalho com orçamento), \cod{painel} (agenda), \cod{configuracoes} (diálogo),
+\cod{gravador} (ferramenta de gravação da voz) e \cod{tema}. & Aplicação, domínio, portas, núcleos e
+raiz de composição \\ \hline
+Raiz de composição (\cod{bootstrap}) & Escolhe e conecta as implementações concretas; inicia os
+serviços lentos em paralelo. & Todas as camadas internas e os adaptadores \\ \hline
+Transversais (\cod{i18n}, \cod{configuracao}) & Catálogo de mensagens e tradutor; configuração
+imutável lida do ambiente. & Nenhuma camada de infraestrutura \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\section{Contratos entre as camadas}
+
+Os contratos são definidos como protocolos estruturais \cite{pep544}. Um componente satisfaz um
+contrato quando possui os métodos e atributos exigidos, sem precisar herdar de uma classe base. Isso
+permite que os testes usem dublês simples \cite{meszaros2007} e que a substituição de uma tecnologia,
+como trocar o serviço de síntese de voz, não afete o domínio nem a aplicação. Os contratos foram
+mantidos pequenos, conforme o princípio da segregação de interfaces. Por exemplo, o serviço de memória
+depende apenas da consulta ao histórico; a agenda, apenas do repositório da agenda; e a tela de
+configurações, apenas de um sintetizador cuja voz possa ser trocada.
+
+O contrato de persistência da agenda pertence ao próprio domínio (\cod{dominio/repositorios.py}),
+pois é o domínio que declara do que precisa. A infraestrutura, representada pela classe
+\cod{BancoSqlite}, implementa esse contrato e também os de histórico, de preferências e de arquivo
+do banco. A porta \cod{PersistenciaAssistente} combina os quatro contratos para os poucos pontos que
+precisam do conjunto, como o núcleo da sessão.
+
+Os modelos de linguagem informam o provedor e o modelo em uso, e cada provedor oferece um catálogo
+(\cod{CatalogoModelos}) com os modelos que o assistente consegue usar. Quando um catálogo não pode ser
+consultado, ele levanta uma exceção com a chave da mensagem no catálogo de textos, e não um texto
+pronto: o adaptador não precisa conhecer o idioma da interface.
+
+\section{Modelo de dados}
+
+A persistência utiliza um único arquivo SQLite (\cod{memoria.db}), cujo esquema é versionado por meio
+do mecanismo \cod{PRAGMA user_version} e migrado automaticamente na abertura \cite{sqlite}. As tabelas
+são descritas no Quadro~\ref{qua:tabelas}.
+
+\begin{singlespace}
+\legendaquadro{Tabelas do banco de dados}\label{qua:tabelas}
+\small
+\begin{tabularx}{\textwidth}{|P{2.9cm}|L|}
+\hline
+\textbf{Tabela} & \textbf{Conteúdo e restrições} \\ \hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Conteúdo e restrições} \\ \hline
+\endhead
+\cod{tarefas} & Identificador, texto, data de criação, indicador de conclusão (restrito a 0 ou 1) e
+data de conclusão. \\ \hline
+\cod{lembretes} & Identificador, texto, data e hora do aviso e indicador de aviso já dado. \\ \hline
+\cod{historico} & Sequência, data e hora do fato, tipo do evento, entidade, identificador da entidade,
+descrição no momento do fato, dados adicionais em JSON, resumo do registro anterior e resumo do
+próprio registro (único). Índice por data. Gatilhos recusam qualquer UPDATE ou DELETE. \\ \hline
+\cod{preferencias} & Pares chave e valor com as escolhas da tela de configurações (avatar, voz, tom,
+ritmo, ativação por voz, idioma e microfone). \\ \hline
+\cod{meta} & Pares chave e valor de controle interno, como o próximo identificador. \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+Os tipos de evento registrados no histórico são: tarefa criada, tarefa concluída, tarefa reaberta,
+tarefa removida, lembrete criado, lembrete avisado e lembrete removido. Cada registro guarda a
+descrição do item no momento do fato, de modo que a resposta sobre o passado continua correta mesmo
+se o item for removido depois. O resumo de cada registro é calculado com SHA-256 \cite{nist2015} sobre
+o resumo anterior e os campos do registro; a verificação de integridade recalcula a cadeia e aponta o
+primeiro registro inconsistente, detectando alteração, remoção, inserção por fora do sistema e
+quebra de encadeamento.
+
+O arquivo fica, por padrão, na pasta de dados, mas pode ser movido para outra pasta pela tela de
+configurações. Como o banco não pode guardar o próprio endereço, o local escolhido é registrado em um
+pequeno arquivo JSON na pasta de dados, lido na abertura. A mudança e o backup usam a interface de
+backup do SQLite \cite{sqlite}, que produz uma cópia consistente mesmo com gravações em andamento; a
+cópia é conferida com \cod{PRAGMA integrity_check} antes de ser aceita, e o arquivo anterior é
+renomeado com a data, nunca apagado.
+
+\section{Modelo de concorrência}
+
+Um assistente de voz precisa ouvir, pensar, falar e animar ao mesmo tempo, mas a biblioteca Tkinter
+não é segura para uso por várias threads. A solução adotada combina quatro mecanismos:
+
+\begin{enumerate}[label=\alph*)]
+  \item \textbf{barramento de eventos}: as threads de trabalho publicam eventos imutáveis (mudança de
+        estado, fala reconhecida, resposta parcial, nível do microfone, aviso, serviços prontos, avatar
+        pronto) em uma fila segura; a thread principal os despacha a cada quadro da animação, e somente
+        ela altera componentes gráficos;
+  \item \textbf{uma interação por vez}: uma trava garante que apenas uma interação (ouvir, pensar e
+        falar) esteja em andamento; anúncios, como saudação e lembretes, entram em uma fila e são falados
+        entre as interações;
+  \item \textbf{token de cancelamento por interação}: um objeto \cod{threading.Event} novo é criado de
+        forma síncrona no início de cada interação; todos os estágios consultam esse token, de modo que
+        uma interrupção nunca se perde e estágios cancelados anteriormente não são reativados;
+  \item \textbf{máquina de estados explícita}: as transições válidas são declaradas (por exemplo, de
+        “ouvindo” só é possível ir para “parado” ou “pensando”); uma transição inválida gera erro
+        imediato, em vez de um defeito silencioso.
+\end{enumerate}
+
+As threads existentes em execução normal são: a principal (interface e animação); a de inicialização
+dos serviços; as de renderização do avatar e de geração dos halos; a da interação corrente; as dos
+estágios “pensar” e “sintetizar” do pipeline, com duas threads de síntese de voz; a da escuta passiva;
+e a do agendador de lembretes, que dorme até o próximo vencimento.
+
+Como só a thread principal pode criar imagens para a biblioteca gráfica, a conversão das imagens
+preparadas em segundo plano (quadros do avatar e halos) passa por uma fila de trabalho com orçamento de
+4 ms por quadro. Cada tarefa é um gerador que converte uma imagem e devolve o controle, de modo que um
+trabalho de centenas de milissegundos se espalha por vários quadros sem interromper a animação.
+
+\section{Fluxos de execução}
+
+\subsection{Inicialização}
+
+\begin{enumerate}[label=\arabic*.]
+  \item O ponto de entrada lê as opções da linha de comando e a configuração imutável do ambiente.
+  \item A raiz de composição monta o núcleo, uma operação instantânea: abre o banco de dados no local
+        escolhido ou no padrão (migrando a agenda JSON antiga, se houver), cria a agenda, carrega as preferências, define o idioma e cria
+        os serviços de memória e de programas.
+  \item A janela é exibida imediatamente, com tamanho fixo, e o laço de quadros começa; ele roda a 60
+        quadros por segundo com o assistente ativo e a 30 em repouso.
+  \item Em segundo plano, o avatar é renderizado ou lido do cache, os halos são gerados, e os serviços
+        lentos são iniciados
+        em paralelo: conexão com o modelo de linguagem, tentando o Claude, depois o modelo local
+        (Ollama) e, por fim, o modo offline;
+        calibração do microfone; abertura do áudio; carregamento do modelo de ativação; e leitura da
+        lista de programas instalados.
+  \item Quando os serviços ficam prontos, um evento avisa a interface, que habilita o botão de
+        microfone, inicia o agendador, enfileira a saudação e liga a escuta passiva.
+\end{enumerate}
+
+\subsection{Conversa em pipeline}
+
+\begin{enumerate}[label=\arabic*.]
+  \item O usuário pressiona ESPAÇO, diz “ok Fael” ou envia um texto; o orquestrador adquire a trava de
+        interação, libera o microfone da escuta passiva e cria um token de cancelamento.
+  \item No estado “ouvindo”, o reconhecedor capta a fala com detecção de atividade de voz e devolve o
+        texto; o nível do microfone é publicado continuamente para a interface.
+  \item No estado “pensando”, o modelo começa a transmitir a resposta em pedaços de texto.
+  \item O estágio “pensar” do pipeline acumula os pedaços, publica a resposta parcial para a legenda e
+        entrega frases completas a uma fila; o divisor de frases corta a primeira frase cedo e não quebra
+        números nem abreviações.
+  \item O estágio “sintetizar” pede a síntese de cada frase assim que ela fica pronta, com até duas
+        sínteses simultâneas; a thread que toca decodifica o áudio, apara o silêncio das pontas (a voz
+        sintetizada traz cerca de 1 s de silêncio ao fim de cada frase) e calcula o envelope de volume e
+        de timbre que comandará a boca do avatar.
+  \item A thread da interação toca as faixas em ordem, no estado “falando”, enquanto as frases seguintes
+        ainda estão sendo geradas e sintetizadas.
+  \item Ao fim, a interação publica a resposta concluída, volta ao estado “parado”, fala os anúncios
+        pendentes e libera a trava; a escuta passiva retoma o microfone.
+\end{enumerate}
+
+Esse arranjo faz com que a espera percebida seja a da primeira frase, e não a da resposta inteira. Uma
+interrupção sinaliza o token: a reprodução para, as filas são esvaziadas sem sintetizar e o fluxo de
+texto do modelo é fechado, o que descarta a rodada no histórico da conversa.
+
+\subsection{Ativação por voz}
+
+\begin{enumerate}[label=\arabic*.]
+  \item Enquanto o assistente está parado, a vigia reserva o microfone e entrega o áudio ao Vosk, que só
+        pode escolher entre as variantes aceitas de “ok Fael”, frases distratoras parecidas (como “o que
+        foi” e “ok Rafael”) e um marcador de fala desconhecida.
+  \item O áudio passa por um controle automático de ganho, que amplifica a voz até um nível adequado,
+        com teto de 8 vezes e resistência a picos isolados; se a voz chega fraca demais de forma
+        persistente, um aviso é exibido.
+  \item Ao reconhecer uma variante aceita, a vigia continua gravando enquanto houver voz, para capturar
+        um comando dito na mesma frase.
+  \item Se houver comando, ele é transcrito com precisão pelo reconhecedor remoto e alinhado com a
+        transcrição local, para remover a frase de ativação mesmo quando ela for mal transcrita; se não
+        houver, um sinal sonoro de dois tons confirma a ativação e o assistente passa a ouvir.
+  \item Em ambos os casos, a interação segue o fluxo de conversa descrito anteriormente.
+\end{enumerate}
+
+\subsection{Memória de longo prazo}
+
+\begin{enumerate}[label=\arabic*.]
+  \item Cada alteração na agenda gera, na mesma transação, um ou mais registros de auditoria.
+  \item Quando o usuário pergunta “o que eu fiz…”, o período é interpretado por uma lista ordenada de
+        interpretadores, do mais específico para o mais genérico, sempre voltada ao passado.
+  \item O serviço de memória consulta os registros do período e calcula o resultado líquido de cada
+        tarefa: concluídas, criadas e ainda pendentes, e lembretes avisados.
+  \item A resposta é falada no idioma configurado; com o modelo de linguagem ativo, a mesma consulta
+        está disponível como ferramenta.
+\end{enumerate}
+
+\subsection{Abertura de programas}
+
+\begin{enumerate}[label=\arabic*.]
+  \item O lançador lê as entradas \cod{.desktop} dos diretórios padronizados pelo freedesktop.org
+        \cite{freedesktop}, inclusive de Snap e Flatpak, ignorando entradas ocultas e as que exigem
+        programas ausentes.
+  \item O pedido é extraído da fala (“abre o navegador”), normalizado e comparado com nomes, palavras-chave
+        e sinônimos em português e inglês; “navegador” resolve para o navegador padrão do sistema.
+  \item Se houver um candidato claro, o programa é aberto sem interpretador de comandos; se houver
+        empate, o assistente pergunta qual das opções o usuário deseja.
+\end{enumerate}
+
+\subsection{Laço de ferramentas do modelo de linguagem}
+
+\begin{enumerate}[label=\arabic*.]
+  \item A fala é acrescentada ao histórico da conversa com a data e a hora atuais, mantendo as instruções
+        de sistema estáveis e, portanto, reaproveitáveis pelo cache do serviço.
+  \item O texto da resposta é repassado ao pipeline conforme chega.
+  \item Ao fim de cada rodada, se o modelo pediu ferramentas, cada entrada é validada contra o esquema e
+        executada; os resultados são devolvidos ao modelo, até o limite de oito rodadas.
+  \item Recusas, entradas truncadas pelo limite de tamanho, erros da API e interrupções descartam a
+        rodada inteira do histórico e produzem uma frase explicativa para o usuário.
+\end{enumerate}
+
+\subsection{Respostas do modelo local}
+
+\begin{enumerate}[label=\arabic*.]
+  \item Se a fala é um comando que o modo offline reconhece, ele responde, sem consultar o modelo.
+  \item Se a fala trata de agenda, lembretes ou histórico, o assistente diz “só um instante” e envia o
+        pedido ao modelo apenas com as ferramentas do assunto que criam ou consultam, nunca as que
+        concluem, removem ou abrem programas.
+  \item Caso contrário, a fala é conversa e vai ao modelo sem ferramentas, com o texto transmitido em
+        fluxo contínuo para o pipeline.
+  \item Uma chamada de ferramenta escrita como texto pelo modelo é executada, se for válida, ou
+        descartada; ela nunca é falada.
+  \item Se o servidor local não responde, a fala é atendida pelo modo offline, e o modelo só é tentado
+        de novo depois de 30 s.
+\end{enumerate}
+
+\subsection{Animação da boca}
+
+\begin{enumerate}[label=\arabic*.]
+  \item Antes de tocar, cada faixa tem seu envelope calculado quadro a quadro: o volume define a
+        abertura, e a razão entre a energia das frequências agudas (1 a 3 kHz) e graves (250 Hz a
+        1 kHz) define o formato da boca (arredondada para “o” e “u”, neutra para “a” e aberta para “e” e “i”).
+  \item Durante a reprodução, o reprodutor expõe a amplitude e o formato do instante atual.
+  \item A cada quadro, o palco suaviza esses valores de forma independente da taxa de quadros e escolhe a
+        imagem pré-renderizada correspondente, entre 36 combinações (três formatos e doze níveis).
+  \item O palco descreve a cena inteira a cada quadro, mas um canvas diferencial só repassa à biblioteca
+        gráfica as coordenadas e opções que mudaram, já que cada alteração obriga a redesenhar a área
+        afetada, inclusive as imagens grandes que estão por baixo.
+\end{enumerate}
+
+\section{Decisões de projeto}
+
+O Quadro~\ref{qua:decisoes} resume as principais decisões de projeto e suas justificativas.
+
+\begin{singlespace}
+\legendaquadro{Principais decisões de projeto}\label{qua:decisoes}
+\small
+\begin{tabularx}{\textwidth}{|C{0.8cm}|P{5cm}|L|}
+\hline
+\textbf{Nº} & \textbf{Decisão} & \textbf{Justificativa} \\ \hline
+\endfirsthead
+\hline
+\textbf{Nº} & \textbf{Decisão} & \textbf{Justificativa} \\ \hline
+\endhead
+1 & Arquitetura hexagonal com protocolos & Troca de tecnologia sem tocar no domínio; dublês triviais nos testes. \\ \hline
+2 & Pipeline de três estágios com filas & A latência percebida passa a ser a da primeira frase. \\ \hline
+3 & Um token de cancelamento por interação, criado de forma síncrona & Interrupção instantânea, que nunca se perde nem reativa estágios antigos. \\ \hline
+4 & Barramento de eventos despachado no laço de quadros & A interface só é alterada pela thread principal. \\ \hline
+5 & Máquina de estados explícita & Estados impossíveis tornam-se erros visíveis. \\ \hline
+6 & Histórico da conversa somente de acréscimo, com descarte por rodada & O histórico nunca fica inconsistente, mesmo com interrupções. \\ \hline
+7 & Validação local das entradas das ferramentas & Entradas transmitidas em fluxo podem chegar truncadas; nada inválido é executado. \\ \hline
+8 & Detecção de fala própria sobre o microfone & Medidor de nível real, cancelamento e pausa de fim de fala menor. \\ \hline
+9 & Reconhecimento local e restrito da frase de ativação & Privacidade e exatidão em frases curtas. \\ \hline
+10 & SQLite com histórico somente de acréscimo e cadeia de resumos & Memória confiável e auditável em um único arquivo local. \\ \hline
+11 & Renderização prévia do avatar com cache invalidado pelo resumo do código & A animação apenas troca imagens; o cache nunca fica desatualizado. \\ \hline
+12 & Testes de arquitetura & A regra de dependência e os princípios SOLID não dependem apenas de disciplina. \\ \hline
+13 & Despacho por tabelas (intenções, ferramentas e períodos) & Baixa complexidade e extensão sem editar o código existente. \\ \hline
+14 & Canvas diferencial e halo opaco & O redesenho de imagens com transparência dominava o custo; enviar só o que muda e evitar transparência reduziu o repouso de 29\% para 5\% de um núcleo. \\ \hline
+15 & Taxa de quadros adaptativa e fila de trabalho com orçamento & Fluidez quando há movimento, economia em repouso e nenhum engasgo ao converter imagens. \\ \hline
+16 & Corte do silêncio e síntese paralela de frases & As frases se emendam como na fala natural e a primeira palavra sai antes. \\ \hline
+17 & Modelo local em camadas, com ferramentas seguras & Um modelo pequeno conversa bem, mas escolhe ferramentas mal; ações destrutivas ficam com comandos determinísticos. \\ \hline
+18 & Microfone escolhido pelo servidor de áudio, com variável definida só durante a abertura & Evita disputar o dispositivo com o PipeWire e não afeta os programas abertos pelo assistente. \\ \hline
+19 & Estado da inicialização lido dos próprios arquivos & A tela nunca contradiz o sistema, mesmo se o usuário mexer nos atalhos por fora. \\ \hline
+20 & Mudança do banco por cópia conferida, sem apagar o anterior & Nenhuma operação sobre os dados do usuário é destrutiva ou irreversível. \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}

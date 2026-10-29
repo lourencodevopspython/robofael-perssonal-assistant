@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Robofael
+GenericName=Assistente pessoal
+GenericName[en]=Personal assistant
+Comment=Assistente de atividades diárias com avatar e voz
+Comment[en]=Daily activities assistant with an avatar and voice
+Exec=robofael
+Icon=robofael
+Terminal=false
+Categories=Utility;
+Keywords=assistente;voz;tarefas;lembretes;agenda;assistant;voice;tasks;reminders;
+StartupWMClass=robofael
+StartupNotify=true

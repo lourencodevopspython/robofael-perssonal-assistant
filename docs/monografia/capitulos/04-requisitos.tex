@@ -1,0 +1,296 @@
+\chapter{Requisitos do sistema}
+
+Este capítulo especifica os requisitos do Robofael. Seguindo \textcite{sommerville2018}, os
+requisitos funcionais (RF) descrevem os serviços que o sistema oferece, e os requisitos não funcionais
+(RNF) descrevem restrições e atributos de qualidade, organizados segundo as características da
+ISO/IEC 25010 \cite{iso25010}. Cada requisito recebeu um identificador, uma prioridade e a indicação
+de como é verificado. A prioridade segue três níveis: \textbf{essencial}, sem o qual o sistema não
+cumpre seu propósito; \textbf{importante}, que afeta significativamente a experiência; e
+\textbf{desejável}, que agrega valor sem comprometer o uso básico. A rastreabilidade entre os
+requisitos e os testes automatizados é apresentada no Apêndice A.
+
+\section{Partes interessadas e atores}
+
+O sistema possui um único ator humano, o \textbf{usuário}, que é a pessoa dona do computador e das
+fotografias que dão origem ao avatar. Ele interage por voz, teclado e mouse. Há ainda três atores
+externos: o \textbf{serviço de modelo de linguagem} (Claude, na nuvem, ou um modelo local servido pelo
+Ollama), que interpreta pedidos em linguagem natural; os \textbf{serviços de fala} (reconhecimento do Google e síntese do edge-tts e do gTTS),
+acessados pela internet; e o \textbf{sistema operacional}, que fornece o microfone, o áudio, a lista de
+programas instalados e os diretórios de dados do usuário.
+
+\section{Requisitos funcionais}
+
+Os requisitos funcionais foram agrupados por área: interação e avatar (Quadro~\ref{qua:rf-interacao}),
+agenda e memória (Quadro~\ref{qua:rf-agenda}), inteligência e integração com o sistema
+(Quadro~\ref{qua:rf-inteligencia}) e configuração, idioma e distribuição (Quadro~\ref{qua:rf-config}).
+Os requisitos incorporados nas versões 3.6.0 a 3.8.0 estão reunidos no Quadro~\ref{qua:rf-novos}.
+
+\begin{singlespace}
+\legendaquadro{Requisitos funcionais de interação e avatar}\label{qua:rf-interacao}
+\small
+\begin{tabularx}{\textwidth}{|C{1.25cm}|L|C{2.0cm}|P{3.2cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endhead
+RF01 & Exibir um avatar em formato de busto, centralizado, gerado a partir das fotografias do usuário, com
+       roupa substituída por uma camisa de estilo futurista e nitidez realçada. & Essencial & Testes de avatar \\ \hline
+RF02 & Animar a boca do avatar em sincronia com a voz sintetizada, variando abertura (12 níveis) e
+       formato (três formatos de vogal), com transição suave e leve balanço em repouso. & Essencial & Testes de animação \\ \hline
+RF03 & Iniciar a escuta de um comando pela tecla ESPAÇO ou pelo botão de microfone, exibindo o nível
+       real da voz captada. & Essencial & Testes do orquestrador; uso real \\ \hline
+RF04 & Ativar o assistente sem as mãos ao ouvir a frase “ok Fael”, confirmando com um sinal sonoro e
+       passando a ouvir o comando. & Essencial & Testes de ativação \\ \hline
+RF05 & Aceitar a frase de ativação e o comando em uma única fala (por exemplo, “ok Fael, anota tarefa
+       comprar pão”), extraindo apenas o comando. & Importante & Testes de ativação (transcrições reais) \\ \hline
+RF06 & Responder por voz neural, com tom e ritmo ajustáveis, inclusive a partir do perfil gravado da
+       voz do usuário. & Essencial & Testes de voz e configurações \\ \hline
+RF07 & Aceitar comandos digitados em uma caixa de texto, com o mesmo tratamento dos comandos falados; um texto
+       enviado com o assistente ocupado interrompe o que ele faz e é atendido em seguida. & Importante & Testes de interface e do orquestrador \\ \hline
+RF08 & Exibir legendas com a fala reconhecida do usuário e com a resposta à medida que ela é gerada. & Importante & Testes de interface \\ \hline
+RF09 & Permitir interromper, a qualquer momento, a escuta, a geração ou a fala da resposta (ESPAÇO, ESC
+       ou botão contextual). & Essencial & Testes do orquestrador \\ \hline
+RF10 & Indicar visualmente o estado do assistente (iniciando, parado, ouvindo, pensando, falando), com
+       rótulo do botão adequado a cada estado. & Importante & Testes de estados e de interface \\ \hline
+RF11 & Saudar o usuário ao iniciar, informando o número de tarefas pendentes, o modo offline (se for o
+       caso) e como chamar o assistente. & Desejável & Testes de sessão e de idiomas \\ \hline
+RF12 & Exibir avisos na tela para microfone ausente, voz captada baixa demais, falhas de áudio e de
+       avatar e desligamento da escuta passiva. & Importante & Testes de ganho, ativação e interface \\ \hline
+RF13 & Oferecer modo contínuo, em que o assistente volta a ouvir após cada resposta até que o usuário se
+       despeça. & Desejável & Testes do orquestrador \\ \hline
+RF14 & Trocar o avatar entre as fotografias disponíveis (tecla T ou configurações), sem travar a interface. & Desejável & Testes de configurações \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\begin{singlespace}
+\legendaquadro{Requisitos funcionais de agenda e memória}\label{qua:rf-agenda}
+\small
+\begin{tabularx}{\textwidth}{|C{1.25cm}|L|C{2.0cm}|P{3.2cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endhead
+RF15 & Criar tarefas por voz ou por texto. & Essencial & Testes da agenda e do modo offline \\ \hline
+RF16 & Listar as tarefas pendentes e, opcionalmente, as concluídas. & Essencial & Testes da agenda e de ferramentas \\ \hline
+RF17 & Concluir, reabrir e remover tarefas por voz ou pelo painel (duplo clique e tecla Delete). & Essencial & Testes da agenda e de interface \\ \hline
+RF18 & Criar lembretes para uma data e hora ou para daqui a N minutos e anunciá-los por voz no horário. & Essencial & Testes do agendador \\ \hline
+RF19 & Listar e remover lembretes futuros. & Importante & Testes da agenda \\ \hline
+RF20 & Registrar automaticamente, em histórico, cada criação, conclusão, reabertura e remoção de tarefa e
+       cada criação, aviso e remoção de lembrete, com data e hora. & Essencial & Testes do SQLite \\ \hline
+RF21 & Responder “o que eu fiz” em um dia, semana ou período (ontem, anteontem, um dia da semana, uma data,
+       semana passada, esta semana, últimos N dias, mês passado), considerando apenas o resultado
+       líquido (tarefa reaberta não conta como feita). & Essencial & Testes de memória \\ \hline
+RF22 & Verificar a integridade do histórico e apontar o primeiro registro alterado, removido ou inserido
+       indevidamente (comando \cod{make integridade}). & Importante & Testes do SQLite \\ \hline
+RF23 & Migrar automaticamente a agenda do formato JSON das versões anteriores para o banco de dados,
+       preservando o arquivo original renomeado. & Importante & Testes do SQLite \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\begin{singlespace}
+\legendaquadro{Requisitos funcionais de inteligência e integração com o sistema}\label{qua:rf-inteligencia}
+\small
+\begin{tabularx}{\textwidth}{|C{1.25cm}|L|C{2.0cm}|P{3.2cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endhead
+RF24 & Interpretar pedidos em linguagem natural com um modelo de linguagem que opera a agenda, o histórico
+       e os programas por meio de ferramentas. & Essencial & Testes do modelo Claude e de ferramentas \\ \hline
+RF25 & Funcionar em modo offline quando o modelo de linguagem estiver indisponível, atendendo a comandos de
+       tarefas, lembretes relativos, hora, data, histórico e programas. & Essencial & Testes do modo offline \\ \hline
+RF26 & Iniciar uma nova conversa quando solicitado (“nova conversa”), sem perder a agenda. & Desejável & Testes do modelo Claude \\ \hline
+RF27 & Informar a hora e a data atuais. & Importante & Testes do modo offline \\ \hline
+RF28 & Abrir programas instalados no Linux pelo nome ou por sinônimos (por exemplo, “navegador”,
+       “calculadora”), usando o navegador padrão quando pedido e solicitando escolha em caso de
+       ambiguidade. & Importante & Testes de programas \\ \hline
+RF29 & Listar os programas instalados, com filtro opcional pelo nome. & Desejável & Testes de programas \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\begin{singlespace}
+\legendaquadro{Requisitos funcionais de configuração, idioma e distribuição}\label{qua:rf-config}
+\small
+\begin{tabularx}{\textwidth}{|C{1.25cm}|L|C{2.0cm}|P{3.2cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endhead
+RF30 & Gravar amostras da voz do usuário e gerar um perfil com o deslocamento de tom e de ritmo que
+       aproxima a voz sintética da voz dele. & Importante & Testes de perfil de voz \\ \hline
+RF31 & Oferecer tela de configurações com idioma, avatar, voz base, tom, ritmo, botão para ouvir o
+       resultado, uso do perfil gravado e ativação por voz, com opções de salvar e de cancelar (que
+       desfaz o teste). & Importante & Testes de configurações \\ \hline
+RF32 & Guardar as preferências entre sessões, com precedência sobre o perfil gravado e sobre os valores
+       padrão. & Importante & Testes de configurações \\ \hline
+RF33 & Responder em português do Brasil ou em inglês dos Estados Unidos, trocando ao vivo a interface,
+       as respostas, a voz, o reconhecimento de fala e as instruções do modelo. & Importante & Testes de idiomas \\ \hline
+RF34 & Entender comandos nos dois idiomas, independentemente do idioma das respostas. & Desejável & Testes de idiomas \\ \hline
+RF35 & Aceitar opções de linha de comando (avatar, modo contínuo, desligar ativação, idioma e registros
+       detalhados) e configuração por variáveis de ambiente. & Desejável & Testes de configuração \\ \hline
+RF36 & Ser instalável no Ubuntu por um pacote \cod{.deb}, com comandos no terminal, atalhos e ícone no
+       menu de aplicativos e remoção que preserva os dados do usuário. & Importante & Teste do pacote em ambiente isolado \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\begin{singlespace}
+\legendaquadro{Requisitos funcionais incorporados nas versões 3.6.0 a 3.8.0}\label{qua:rf-novos}
+\small
+\begin{tabularx}{\textwidth}{|C{1.25cm}|L|C{2.0cm}|P{3.2cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Descrição} & \textbf{Prioridade} & \textbf{Verificação} \\ \hline
+\endhead
+RF37 & Sem o Claude, conversar e atender pedidos de agenda em linguagem livre com um modelo local
+       (Ollama), usando apenas ferramentas que criam ou consultam, e voltar ao modo offline se o modelo
+       local deixar de responder. & Importante & Testes do modelo local \\ \hline
+RF38 & Exibir nas configurações o modelo de linguagem em uso e os modelos compatíveis do Claude e do
+       Ollama, informando o motivo quando um provedor não puder ser consultado. & Desejável & Testes de banco e modelos; testes de configurações \\ \hline
+RF39 & Escolher o microfone entre os conectados ao computador, com a troca valendo na escuta seguinte,
+       inclusive para a escuta passiva e a gravação da voz. & Importante & Testes de microfone e inicialização \\ \hline
+RF40 & Oferecer, como opções, abrir o assistente ao entrar no computador e pelo comando
+       \cod{robofael} em qualquer terminal. & Desejável & Testes de microfone e inicialização \\ \hline
+RF41 & Mudar o banco de dados para outra pasta com o assistente em uso, sem apagar o arquivo anterior e
+       sem sobrescrever um banco existente, mantendo a escolha nas aberturas seguintes. & Importante & Testes de banco e modelos \\ \hline
+RF42 & Fazer backup do banco de dados em qualquer local, com a cópia conferida antes de ser aceita. & Importante & Testes de banco e modelos \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\section{Requisitos não funcionais}
+
+Os requisitos não funcionais estão organizados em duas partes: desempenho, confiabilidade e segurança
+(Quadro~\ref{qua:rnf-1}); e usabilidade, manutenibilidade e portabilidade (Quadro~\ref{qua:rnf-2}).
+Sempre que possível, foram definidos com metas mensuráveis.
+
+\begin{singlespace}
+\legendaquadro{Requisitos não funcionais de desempenho, confiabilidade e segurança}\label{qua:rnf-1}
+\small
+\begin{tabularx}{\textwidth}{|C{1.4cm}|P{3.1cm}|L|P{2.8cm}|}
+\hline
+\textbf{ID} & \textbf{Característica} & \textbf{Descrição e meta} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Característica} & \textbf{Descrição e meta} & \textbf{Verificação} \\ \hline
+\endhead
+RNF01 & Desempenho (tempo) & A janela deve ficar visível em menos de 1 s após a abertura; o trabalho lento
+        (modelo, microfone, áudio e avatar) ocorre em segundo plano. & Medição; teste de inicialização \\ \hline
+RNF02 & Desempenho (tempo) & A primeira palavra da resposta deve ser falada assim que a primeira frase
+        for gerada e sintetizada, sem esperar o restante da resposta. & Teste que prova o pipeline \\ \hline
+RNF03 & Desempenho (tempo) & Uma interrupção deve surtir efeito em cerca de 10 ms em qualquer estágio
+        (ouvindo, pensando ou falando). & Testes do orquestrador \\ \hline
+RNF04 & Desempenho (tempo) & Lembretes devem ser anunciados com atraso inferior a 0,1 s em relação ao
+        horário marcado. & Testes do agendador \\ \hline
+RNF05 & Desempenho (recursos) & A animação deve rodar a 60 quadros por segundo com o assistente ativo e a
+        30 em repouso, com compensação de deriva, reenviando ao Tk apenas o que mudou e trocando apenas
+        imagens pré-renderizadas; falas repetidas e quadros do avatar devem vir de
+        cache em disco (LRU de 300 falas; cache do avatar invalidado pelo resumo do código). & Testes de animação e de voz \\ \hline
+RNF06 & Confiabilidade (integridade) & Toda alteração da agenda e seus registros de histórico devem ser
+        gravados na mesma transação; o histórico é somente de acréscimo e encadeado por SHA-256. & Testes do SQLite \\ \hline
+RNF07 & Confiabilidade (consistência) & O histórico da conversa com o modelo só cresce por acréscimo;
+        uma rodada que falhe, seja recusada ou interrompida é descartada por inteiro. & Testes do modelo Claude \\ \hline
+RNF08 & Confiabilidade (tolerância a falhas) & Na ausência do modelo, usar o modo offline; na falha da voz
+        neural, usar a voz de reserva; sem microfone, aceitar texto; após três falhas seguidas da escuta
+        passiva, desligá-la com aviso. & Testes de composição, ativação e voz \\ \hline
+RNF09 & Confiabilidade (concorrência) & Apenas uma interação por vez; somente a thread principal acessa a
+        interface gráfica; cada interação possui um token de cancelamento próprio, criado de forma síncrona. & Testes do orquestrador e do barramento \\ \hline
+RNF10 & Segurança (privacidade) & A escuta passiva deve ser processada localmente; o áudio só é enviado a
+        serviços externos depois da ativação ou de um comando explícito. Os dados ficam em arquivos locais
+        do usuário. & Revisão de código; testes de ativação \\ \hline
+RNF11 & Segurança (integridade de entradas) & As entradas das ferramentas do modelo devem ser validadas
+        contra o esquema (tipos, campos obrigatórios e campos extras) antes da execução; entradas truncadas
+        nunca são executadas; programas são abertos sem interpretador de comandos. & Testes de ferramentas e de programas \\ \hline
+RNF12 & Segurança (segredos) & Credenciais vêm de variáveis de ambiente e não são registradas em logs nem
+        gravadas em arquivos do projeto. & Revisão de código \\ \hline
+RNF13 & Exatidão (ativação) & A frase de ativação não deve disparar com frases parecidas: meta de zero
+        falsos positivos no conjunto de calibração, inclusive para o nome do usuário (“ok Rafael”). & Testes de ativação com transcrições reais \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\begin{singlespace}
+\legendaquadro{Requisitos não funcionais de usabilidade, manutenibilidade e portabilidade}\label{qua:rnf-2}
+\small
+\begin{tabularx}{\textwidth}{|C{1.4cm}|P{3.1cm}|L|P{2.8cm}|}
+\hline
+\textbf{ID} & \textbf{Característica} & \textbf{Descrição e meta} & \textbf{Verificação} \\ \hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Característica} & \textbf{Descrição e meta} & \textbf{Verificação} \\ \hline
+\endhead
+RNF14 & Usabilidade (operabilidade) & Todas as ações principais devem ter atalho de teclado (ESPAÇO, ENTER,
+        ESC, T, Ctrl+Q); o botão principal muda de rótulo conforme o estado. & Testes de interface \\ \hline
+RNF15 & Usabilidade (estética e estabilidade) & A janela tem tamanho fixo, para que o palco desenhado em
+        coordenadas absolutas não se desloque ao maximizar. & Teste de tamanho fixo \\ \hline
+RNF16 & Usabilidade (retorno) & O nível do microfone, o estado atual, as legendas e os avisos devem ser
+        exibidos continuamente. & Testes de interface \\ \hline
+RNF17 & Usabilidade (inclusão) & As instruções ao modelo e as mensagens não devem atribuir gênero ao
+        usuário. & Revisão do catálogo de mensagens \\ \hline
+RNF18 & Internacionalização & Todas as mensagens ficam em um catálogo único, com as duas línguas lado a lado;
+        nenhuma tradução pode faltar e os campos de formatação devem coincidir. & Testes de idiomas \\ \hline
+RNF19 & Manutenibilidade (modularidade) & Arquitetura hexagonal com regra de dependência verificada por
+        teste; domínio e portas sem bibliotecas de infraestrutura. & Testes de arquitetura \\ \hline
+RNF20 & Manutenibilidade (analisabilidade) & Complexidade ciclomática de no máximo 10 por função;
+        funções curtas; nomes padronizados; nenhum parâmetro sem uso; tipos verificados estaticamente. & ruff e mypy na integração contínua \\ \hline
+RNF21 & Manutenibilidade (testabilidade) & Cobertura mínima de 80\% das linhas e ramificações; dublês para
+        todos os serviços externos; testes de interface com servidor gráfico virtual. & pytest-cov; integração contínua \\ \hline
+RNF22 & Manutenibilidade (modificabilidade) & Acrescentar uma intenção offline, uma ferramenta do modelo ou
+        uma expressão de período não deve exigir alteração do código de despacho. & Testes de arquitetura \\ \hline
+RNF23 & Portabilidade (adaptabilidade) & Compatível com Python 3.10 ou superior; caminhos de dados
+        configuráveis e, quando instalado, nos diretórios XDG do usuário. & Integração contínua (3.10 e 3.12) \\ \hline
+RNF24 & Portabilidade (instalabilidade) & Instalação sem internet, com as dependências Python incluídas no
+        pacote; o ambiente Python é criado na instalação e verificado com \cod{pip check}. & Teste do pacote \\ \hline
+RNF25 & Rastreabilidade de mudanças & Versões numeradas segundo o versionamento semântico, com registro de
+        mudanças por versão. & Revisão do CHANGELOG \\ \hline
+RNF26 & Desempenho (recursos) & Em repouso, o assistente deve consumir no máximo 10\% de um núcleo de
+        processamento; um quadro em repouso não pode reenviar ao Tk o que não mudou. & Medição;
+        \cod{test_renderizacao} \\ \hline
+RNF27 & Desempenho (fluidez) & Nenhum trabalho da thread da interface pode ultrapassar o orçamento de um
+        quadro; conversões de imagem são feitas aos poucos. Entre frases faladas, a pausa não deve exceder
+        0,2 s. & \cod{test_renderizacao}; testes de áudio \\ \hline
+RNF28 & Confiabilidade (preservação dos dados) & Nenhuma operação sobre o banco pode apagar ou sobrescrever
+        dados: cópias são conferidas antes do uso, o arquivo anterior é renomeado, e um banco escolhido
+        inacessível não é substituído por um banco vazio. Os testes não podem alterar a pasta pessoal
+        real. & Testes de banco e modelos; fixture de pasta pessoal isolada \\ \hline
+\end{tabularx}
+\fonte{elaboração própria (2026).}
+\end{singlespace}
+
+\section{Regras de negócio}
+
+Além dos requisitos, algumas regras de negócio orientam o comportamento do sistema:
+
+\begin{enumerate}[label=RN\arabic*:,leftmargin=2.2cm]
+  \item comandos de agenda têm prioridade sobre a abertura de programas: “anota tarefa abrir conta no
+        banco” cria uma tarefa, e não tenta abrir um programa chamado “conta”;
+  \item períodos ditos pelo usuário referem-se sempre ao passado: “segunda-feira” é a mais recente antes
+        de hoje, e “dia 30”, dito em um dia 22, é o dia 30 do mês anterior;
+  \item datas numéricas seguem o idioma das respostas: 05/10 é 5 de outubro em português e 10 de maio em
+        inglês;
+  \item para responder “o que eu fiz”, vale o estado líquido no período: uma tarefa concluída e depois
+        reaberta não é contada como feita;
+  \item a precedência das configurações é: preferência salva, depois opção de linha de comando ou
+        variável de ambiente e, por fim, valor padrão; no caso da voz, o perfil gravado vem antes do
+        padrão;
+  \item ao trocar de idioma, a voz é substituída pela voz padrão do novo idioma caso a atual não o fale,
+        e a conversa com o modelo recomeça;
+  \item nenhum dado do usuário é apagado automaticamente: arquivos corrompidos, migrados ou substituídos
+        por uma mudança de local do banco são renomeados e preservados, e a remoção do pacote mantém a
+        pasta de dados;
+  \item com o modelo local, ações que alteram ou removem dados e a abertura de programas só acontecem
+        por comandos explícitos, nunca por escolha do modelo.
+\end{enumerate}
