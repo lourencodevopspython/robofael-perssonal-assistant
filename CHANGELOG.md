@@ -22,6 +22,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 ### Corrigido
 - Foto que acaba antes do fim do recorte do busto (a selfie nova): a base da camisa aparecia cortada reta.
   O esmaecimento da moldura agora termina onde a foto acaba.
+- Voz que virava feminina no meio de uma resposta e voltava à masculina: uma falha passageira do edge-tts
+  numa frase fazia só aquela frase cair na voz de reserva (gTTS), e esse áudio ainda era guardado no cache
+  como se fosse da voz configurada. Agora o edge-tts é tentado 3 vezes antes da reserva; se ele cair de vez,
+  a reserva segue por 1 minuto em vez de alternar frase a frase; e o áudio da reserva não entra mais no
+  cache (o formato da chave mudou, o que descarta as frases já gravadas na voz errada).
 
 ## [3.9.1] — 2026-10-29
 

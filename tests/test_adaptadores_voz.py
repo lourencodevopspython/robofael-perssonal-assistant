@@ -5,19 +5,29 @@ import threading
 import pytest
 
 from robofael.adaptadores import reprodutor as mod_reprodutor
+from robofael.adaptadores import sintetizador as mod_sintetizador
 from robofael.adaptadores.sintetizador import SintetizadorEdge
 from robofael.portas import Faixa
 
 
 class EdgeFalso:
-    def __init__(self, falhar=False):
-        self.chamadas, self.falhar = 0, falhar
+    def __init__(self, falhar=False, falhas=0):
+        self.chamadas, self.falhar, self.falhas = 0, falhar, falhas  # falhas: quantas antes de funcionar
 
     async def __call__(self, texto):
         self.chamadas += 1
-        if self.falhar:
+        if self.falhar or self.chamadas <= self.falhas:
             raise ConnectionError("sem rede")
         return f"mp3:{texto}".encode()
+
+
+def _gtts_falso(texto, lang, tld):
+    return f"gtts:{lang}.{tld}:{texto}".encode()
+
+
+@pytest.fixture(autouse=True)
+def sem_espera(monkeypatch):
+    monkeypatch.setattr(mod_sintetizador.time, "sleep", lambda _s: None)
 
 
 @pytest.fixture
@@ -53,11 +63,30 @@ def test_cache_descarta_os_menos_usados(sintetizador):
 def test_sem_rede_usa_gtts_de_reserva(tmp_path, monkeypatch):
     s = SintetizadorEdge("v", pasta_cache=None)
     monkeypatch.setattr(s, "_edge", EdgeFalso(falhar=True))
-    monkeypatch.setattr(SintetizadorEdge, "_gtts",
-                        staticmethod(lambda texto, lang, tld: f"gtts:{lang}.{tld}:{texto}".encode()))
+    monkeypatch.setattr(SintetizadorEdge, "_gtts", staticmethod(_gtts_falso))
     assert s.sintetizar("oi") == b"gtts:pt.com.br:oi"
     s.configurar("en-US-AndrewNeural", "+0Hz", "+0%", ("en", "com"))
     assert s.sintetizar("hi") == b"gtts:en.com:hi"
+
+
+def test_falha_passageira_do_edge_nao_troca_a_voz(sintetizador, monkeypatch):
+    sintetizador.edge.falhas = 2  # falha duas vezes e funciona na terceira tentativa
+    monkeypatch.setattr(SintetizadorEdge, "_gtts", staticmethod(_gtts_falso))
+    assert sintetizador.sintetizar("Bom dia") == b"mp3:Bom dia"
+    assert sintetizador.edge.chamadas == 3
+
+
+def test_reserva_nao_entra_no_cache_e_nao_alterna_frase_a_frase(sintetizador, monkeypatch):
+    monkeypatch.setattr(SintetizadorEdge, "_gtts", staticmethod(_gtts_falso))
+    sintetizador.edge.falhar = True
+    assert sintetizador.sintetizar("Olá") == "gtts:pt.com.br:Olá".encode()
+    assert sintetizador.edge.chamadas == 3 and not list(sintetizador.pasta_cache.glob("*.mp3"))
+    sintetizador.edge.falhar = False  # o edge-tts voltou, mas a resposta em curso segue na reserva
+    assert sintetizador.sintetizar("Tudo bem?") == b"gtts:pt.com.br:Tudo bem?"
+    assert sintetizador.edge.chamadas == 3
+    monkeypatch.setattr(mod_sintetizador.time, "monotonic",
+                        lambda: sintetizador._reserva_ate + 1)  # passada a pausa, volta à voz neural
+    assert sintetizador.sintetizar("Olá") == "mp3:Olá".encode()  # e o áudio da reserva não ficou no cache
 
 
 # ---------- Reprodutor ----------
