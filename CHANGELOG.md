@@ -4,6 +4,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 
 ## [Não lançado]
 
+### Adicionado
+- **Trocar o idioma por voz:** "ok Fael, mudar para inglês" e "ok Fael, mudar para português" (também
+  "fale em inglês", "change to English", "switch to Portuguese"...) trocam respostas, voz, reconhecimento de
+  fala e interface na hora, confirmam já no idioma novo e ficam salvos para as próximas aberturas. Falas
+  parecidas que não são pedidos ("como se fala cachorro em inglês?", "anota tarefa estudar inglês") seguem
+  para o modelo como antes.
+- **Tarefas e lembretes no idioma da interface:** cada item continua guardado como foi dito, e o painel e os
+  lembretes falados mostram a tradução para o idioma em uso ("comprar pão" ↔ "buy bread"). Quem traduz é o
+  modelo de linguagem em uso (Claude ou Ollama), em segundo plano e fora do histórico da conversa; cada texto
+  é traduzido uma vez por idioma e guardado no banco (tabela `traducoes`, migração v2 do esquema). Os itens vão
+  numerados, para um modelo pequeno não trocar uma tarefa pela outra. No modo offline, aparece o original.
+- **"Concluir todas as tarefas"** ("complete all tasks", "marca todas as tarefas como feitas"): conclui todas
+  as pendentes de uma vez, numa só transação, com um registro no histórico para cada uma. Também é uma
+  ferramenta do Claude (`concluir_todas_tarefas`); no Ollama, como as outras ações que alteram a agenda, vale
+  só o comando explícito.
+
+### Testes
+- O Ollama instalado na máquina não entra mais nos testes (aparece como fora do ar na porta padrão): o
+  resultado era diferente em cada máquina e ele recebia pedidos de verdade.
+
 ### Alterado
 - **Avatares com as fotos novas** (ilustrações de 500x500, com a boca já aberta num sorriso): os pontos do
   rosto do catálogo (`avatar/catalogo.py`) foram medidos de novo. A boca fica na fresta entre os dentes de

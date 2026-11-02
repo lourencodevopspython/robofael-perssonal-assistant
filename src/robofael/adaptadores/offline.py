@@ -22,6 +22,11 @@ _ANOTAR = re.compile(r"\b(?:adicionar|adiciona|adicione|anota|anotar|anote|a not
 _SOBRA_TAREFA = re.compile(r"^(?:to|called|named|chamada|:)\s+", re.I)  # "add a task to buy milk"
 _CONCLUIR = re.compile(r"(?:conclu\w*|terminei|feita|complete[ds]?|finish(?:ed)?|done with|mark)"
                        r" (?:a |the )?(?:tarefa|task) (?:number |n[uú]mero )?(\d+)", re.I)
+# "concluir todas as tarefas", "marca todas as minhas tarefas como feitas", "complete all my tasks"
+_CONCLUIR_TODAS = re.compile(
+    r"\b(?:conclu\w*|finaliz\w*|termin\w*|marc\w*|fech\w*|complete[ds]?|finish\w*|mark|close|check off)"
+    r"(?:\s+[\w']+){0,2}?\s+(?:todas|all)(?:\s+(?:as|of|the|my|minhas|of my|of the))*\s+(?:tarefas|tasks|to.?dos)\b",
+    re.I)
 _LEMBRETE = re.compile(
     r"\b(?:remind(?: me)?|set (?:a |an )?(?:reminder|alarm)|(?:create|add|make|new) (?:a )?reminder|"
     r"me lembr[ae]r?|lembr[ae]-me|me avis[ae]r?|(?:cri[ae]r?|novo|adiciona) (?:um )?lembrete)\b"
@@ -64,7 +69,7 @@ class ModeloOffline:
         # A ordem importa: comandos de agenda vêm antes de programas ("anota tarefa abrir conta
         # no banco" é uma tarefa) e as consultas genéricas (tarefas, hora, data) ficam por último.
         self.intencoes: tuple[Intencao, ...] = (
-            self._historico, self._anotar, self._concluir, self._lembrar, self._abrir_programa,
+            self._historico, self._anotar, self._concluir_todas, self._concluir, self._lembrar, self._abrir_programa,
             self._listar_pendentes, self._hora, self._data,
         )
 
@@ -108,6 +113,14 @@ class ModeloOffline:
             return self.tr("off.concluida", texto=self.agenda.concluir_tarefa(int(m.group(1))).texto)
         except TarefaNaoEncontrada:
             return self.tr("off.tarefa_nao_achada")
+
+    def _concluir_todas(self, f: str, _agora: datetime) -> str | None:
+        if _PERGUNTA.search(f) or not _CONCLUIR_TODAS.search(f):
+            return None
+        tr, concluidas = self.tr, self.agenda.concluir_todas()
+        if not concluidas:
+            return tr("off.nada_a_concluir")
+        return tr("off.todas_concluidas", n=len(concluidas), tarefas=tr.plural(len(concluidas), "un.tarefa"))
 
     def _lembrar(self, f: str, agora: datetime) -> str | None:
         """"remind me to drink water in 5 minutes", "me lembra amanhã às 9 da reunião": o horário pode vir

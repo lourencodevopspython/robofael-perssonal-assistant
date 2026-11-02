@@ -69,7 +69,18 @@ class ArquivoBanco(Protocol):
     def copiar_para(self, destino: Path) -> CopiaVerificada: ...
 
 
-class PersistenciaAssistente(RepositorioAgenda, ConsultaHistorico, RepositorioPreferencias, ArquivoBanco, Protocol):
+class CacheTraducoes(Protocol):
+    """Traduções já feitas de tarefas e lembretes, por idioma ("pt-BR", "en-US")."""
+
+    def traducoes(self, idioma: str) -> dict[str, str]:
+        """{texto original: tradução} de tudo o que já foi traduzido para `idioma`."""
+        ...
+
+    def guardar_traducoes(self, idioma: str, traducoes: dict[str, str]) -> None: ...
+
+
+class PersistenciaAssistente(RepositorioAgenda, ConsultaHistorico, RepositorioPreferencias, ArquivoBanco,
+                             CacheTraducoes, Protocol):
     """Tudo o que o assistente guarda: agenda, histórico auditável e preferências (ex.: SQLite).
     Os serviços dependem só da parte de que precisam (segregação de interfaces)."""
 
@@ -226,3 +237,13 @@ class RedatorDocumentos(Protocol):
     outro limite de tamanho que as respostas faladas, e sem mexer no histórico da conversa."""
 
     def escrever(self, pedido: str) -> Iterator[str]: ...
+
+
+@runtime_checkable
+class TradutorTextos(Protocol):
+    """Modelo que traduz textos curtos (tarefas e lembretes) para exibição, fora do histórico da conversa."""
+
+    def traduzir(self, textos: list[str], idioma: str) -> list[str]:
+        """Um texto por entrada, na mesma ordem, em `idioma` ("pt-BR"/"en-US"); os que já estão nele voltam
+        iguais. Levanta exceção se não conseguir (sem conexão, resposta ilegível...)."""
+        ...

@@ -27,13 +27,13 @@ def evento(tipo, id_, texto, quando):
 
 
 def test_banco_novo_tem_esquema_versionado_e_vazio(banco):
-    assert banco.versao_esquema == 1 and banco.vazio()
+    assert banco.versao_esquema == 2 and banco.vazio()
     assert banco.carregar() == DadosAgenda()
 
 
 def test_reabrir_nao_reaplica_migracao(tmp_path):
     BancoSqlite(tmp_path / "m.db").fechar()
-    assert BancoSqlite(tmp_path / "m.db").versao_esquema == 1
+    assert BancoSqlite(tmp_path / "m.db").versao_esquema == 2
 
 
 def test_salva_e_recarrega_estado_completo(tmp_path):

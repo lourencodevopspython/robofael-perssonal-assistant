@@ -64,6 +64,15 @@ _MIGRACOES = [
     CREATE TRIGGER historico_sem_remocao BEFORE DELETE ON historico
     BEGIN SELECT RAISE(ABORT, 'o histórico é somente acréscimo'); END;
     """,
+    # v2: tarefas e lembretes traduzidos para o idioma da interface (cache: fora da cadeia de hashes)
+    """
+    CREATE TABLE traducoes (
+        texto TEXT NOT NULL,
+        idioma TEXT NOT NULL,
+        traducao TEXT NOT NULL,
+        PRIMARY KEY (texto, idioma)
+    );
+    """,
 ]
 
 
@@ -255,6 +264,18 @@ class BancoSqlite:
                     c.execute("INSERT INTO preferencias VALUES (?, ?) "
                               "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
                               (chave, json.dumps(valor, ensure_ascii=False)))
+
+    # ---------- Traduções ----------
+    def traducoes(self, idioma: str) -> dict[str, str]:
+        with self._trava:
+            return {r["texto"]: r["traducao"]
+                    for r in self._con.execute("SELECT texto, traducao FROM traducoes WHERE idioma = ?", (idioma,))}
+
+    def guardar_traducoes(self, idioma: str, traducoes: dict[str, str]) -> None:
+        with self._trava, self._transacao() as c:
+            c.executemany("INSERT INTO traducoes VALUES (?, ?, ?) "
+                          "ON CONFLICT(texto, idioma) DO UPDATE SET traducao = excluded.traducao",
+                          [(texto, idioma, traducao) for texto, traducao in traducoes.items()])
 
     # ---------- Migração do JSON antigo ----------
     def importar_json(self, arquivo_json: Path, agora: datetime | None = None) -> bool:

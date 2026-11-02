@@ -12,6 +12,7 @@ from collections.abc import Callable, Generator, Iterator
 from datetime import datetime
 from typing import Any
 
+from robofael.adaptadores import traducao_textos
 from robofael.adaptadores.ferramentas import FERRAMENTAS, EntradaInvalida, ExecutorFerramentas
 from robofael.dominio.linguagem import descrever_agora, pede_nova_conversa
 from robofael.i18n import Tradutor
@@ -108,6 +109,23 @@ class ModeloClaude:
             for evento in stream:
                 if evento.type == "text" and evento.text:
                     yield evento.text
+
+    def traduzir(self, textos: list[str], idioma: str) -> list[str]:
+        """Tarefas e lembretes para o idioma da interface: sem ferramentas e fora do histórico."""
+        partes: list[str] = []
+        with self.cliente.beta.messages.stream(
+            model=self.modelo,
+            max_tokens=4000,
+            system=traducao_textos.instrucoes(idioma),
+            messages=[{"role": "user", "content": traducao_textos.entrada(textos)}],
+            output_config={"effort": "low"},
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+        ) as stream:
+            for evento in stream:
+                if evento.type == "text" and evento.text:
+                    partes.append(evento.text)
+        return traducao_textos.ler_traducoes("".join(partes), len(textos))
 
     def _transmitir_rodada(self) -> Generator[str, None, Any]:
         with self.cliente.beta.messages.stream(

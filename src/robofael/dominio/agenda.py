@@ -68,6 +68,19 @@ class Agenda:
                 self._registrar(TipoEvento.TAREFA_CONCLUIDA if feita else TipoEvento.TAREFA_REABERTA, t.id, t.texto)
             return t
 
+    def concluir_todas(self) -> list[Tarefa]:
+        """Conclui de uma vez (numa só transação) todas as tarefas pendentes; devolve as que concluiu."""
+        with self._trava:
+            pendentes = self.pendentes()
+            if not pendentes:
+                return []
+            with self._alterando():
+                agora = self._agora()
+                for t in pendentes:
+                    t.feita, t.concluida_em = True, agora
+                    self._registrar(TipoEvento.TAREFA_CONCLUIDA, t.id, t.texto)
+        return pendentes
+
     def alternar_tarefa(self, id: int) -> Tarefa:
         with self._trava:
             return self.concluir_tarefa(id, not self._achar(id).feita)

@@ -59,6 +59,23 @@ def casa_isolada(tmp_path_factory, monkeypatch):
     return casa
 
 
+@pytest.fixture(autouse=True)
+def sem_ollama_de_verdade(monkeypatch):
+    """O Ollama instalado na máquina nunca entra nos testes (o resultado seria diferente em cada máquina e ele
+    receberia conversas e traduções de verdade): o servidor na porta padrão aparece como fora do ar. Os testes
+    do modelo local usam clientes falsos ou um servidor falso em outra porta."""
+    from robofael.adaptadores.ollama import ClienteOllama, OllamaIndisponivel
+
+    original = ClienteOllama.modelos
+
+    def modelos(self):
+        if self.url.endswith(":11434"):
+            raise OllamaIndisponivel(f"{self.url}: Ollama de verdade desligado nos testes")
+        return original(self)
+
+    monkeypatch.setattr(ClienteOllama, "modelos", modelos)
+
+
 @pytest.fixture
 def relogio():
     return Relogio()

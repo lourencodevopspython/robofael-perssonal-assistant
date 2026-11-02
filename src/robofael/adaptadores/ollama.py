@@ -29,6 +29,7 @@ from collections.abc import Callable, Generator, Iterator
 from datetime import datetime
 from typing import Any
 
+from robofael.adaptadores import traducao_textos
 from robofael.adaptadores.ferramentas import FERRAMENTAS, EntradaInvalida, ExecutorFerramentas
 from robofael.adaptadores.offline import ModeloOffline
 from robofael.dominio.linguagem import descrever_agora, pede_agenda, pede_nova_conversa
@@ -48,6 +49,7 @@ MANTER_CARREGADO = "30m"  # o modelo fica na memória entre as falas (carregar l
 # num_predict limita a resposta (é falada: curta), o que também limita o pior caso no processador.
 OPCOES = {"num_ctx": 4096, "num_predict": 200, "temperature": 0.6}
 OPCOES_FERRAMENTAS = {**OPCOES, "temperature": 0.0}  # chamadas de ferramenta: JSON estável
+OPCOES_TRADUCAO = {**OPCOES_FERRAMENTAS, "num_predict": 800}  # JSON com a lista traduzida
 OPCOES_DOCUMENTO = {**OPCOES, "num_predict": 1500}  # "gerar doc": texto longo (num_predict não recarrega o modelo)
 MAX_MENSAGENS_LOCAL = 16  # no processador, cada mensagem a mais no contexto atrasa a primeira palavra
 _MARKDOWN = re.compile(r"[*#`]+")
@@ -262,6 +264,16 @@ class ModeloOllama:
             for pedaco in fluxo:
                 if texto := (pedaco.get("message") or {}).get("content"):
                     yield texto
+
+    def traduzir(self, textos: list[str], idioma: str) -> list[str]:
+        """Tarefas e lembretes para o idioma da interface: sem histórico nem ferramentas, saída em JSON."""
+        corpo = {"model": self.modelo, "keep_alive": MANTER_CARREGADO, "options": OPCOES_TRADUCAO,
+                 "format": traducao_textos.esquema(len(textos)),
+                 "messages": [{"role": "system", "content": traducao_textos.instrucoes(idioma)},
+                              {"role": "user", "content": traducao_textos.entrada(textos)}]}
+        with contextlib.closing(self.cliente.conversar(corpo)) as fluxo:
+            resposta = "".join((pedaco.get("message") or {}).get("content") or "" for pedaco in fluxo)
+        return traducao_textos.ler_traducoes(resposta, len(textos))
 
     def responder(self, fala: str) -> Iterator[str]:
         if pede_nova_conversa(fala):

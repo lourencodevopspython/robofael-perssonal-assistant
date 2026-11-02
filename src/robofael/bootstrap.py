@@ -31,11 +31,12 @@ from robofael.aplicacao.documentos import ServicoDocumentos
 from robofael.aplicacao.memoria import Memoria
 from robofael.aplicacao.orquestrador import Orquestrador
 from robofael.aplicacao.programas import ServicoProgramas
-from robofael.aplicacao.sessao import Nucleo, Servicos, idioma_inicial, voz_inicial
+from robofael.aplicacao.sessao import Nucleo, Servicos, idioma_inicial, trocar_idioma, voz_inicial
+from robofael.aplicacao.traducao import TraducaoAgenda
 from robofael.audio.perfil import carregar_perfil
 from robofael.configuracao import Configuracao
 from robofael.dominio.agenda import Agenda
-from robofael.dominio.eventos import AgendaAtualizada, Aviso, Gravidade
+from robofael.dominio.eventos import AgendaAtualizada, Aviso, Gravidade, IdiomaMudou, TraducoesAtualizadas
 from robofael.i18n import Tradutor
 from robofael.portas import (
     CapturaAudio,
@@ -70,12 +71,15 @@ def montar_nucleo(config: Configuracao, lancador: LancadorProgramas | None = Non
     agenda.observar(lambda: barramento.publicar(AgendaAtualizada()))
     preferencias = banco.carregar_preferencias()
     tradutor = Tradutor(idioma_inicial(config, preferencias))
+    tradutor.observar(lambda idioma: barramento.publicar(IdiomaMudou(idioma)))
     programas = ServicoProgramas(lancador or LancadorLinux(), tradutor)
+    traducoes = TraducaoAgenda(agenda, banco, tradutor, lambda: barramento.publicar(TraducoesAtualizadas()))
     return Nucleo(config, barramento, agenda, banco, Memoria(banco, tradutor), programas, preferencias, tradutor,
                   ler_perfil_voz=lambda: carregar_perfil(config.arquivo_perfil_voz),
                   dispositivos=dispositivos or DispositivosPulse(),
                   inicializacao=inicializacao or InicializacaoLinux(),
-                  catalogos=(CatalogoClaude(), CatalogoOllama(ClienteOllama(config.url_ollama))))
+                  catalogos=(CatalogoClaude(), CatalogoOllama(ClienteOllama(config.url_ollama))),
+                  traducoes=traducoes)
 
 
 def _criar_modelo(nucleo: Nucleo) -> ModeloLinguagem:
@@ -186,12 +190,17 @@ def iniciar_servicos(nucleo: Nucleo, continuo: bool = False) -> Servicos:
     documentos = ServicoDocumentos(PastaDocumentos(cfg.pasta_documentos), tr)
     orquestrador = Orquestrador(modelo, sintetizador, reprodutor, nucleo.barramento, microfone, continuo,
                                 ativador=ativador, tradutor=tr, documentos=documentos)
-    agendador = AgendadorLembretes(
-        nucleo.agenda, lambda l: orquestrador.anunciar(tr("fala.lembrete", usuario=cfg.nome_usuario, texto=l.texto)))
+    agendador = AgendadorLembretes(nucleo.agenda, lambda l: orquestrador.anunciar(
+        tr("fala.lembrete", usuario=cfg.nome_usuario, texto=nucleo.exibir(l.texto))))
     if microfone is None:
         nucleo.barramento.publicar(Aviso(tr("mic.nao_encontrado"), Gravidade.ERRO))
-    return Servicos(orquestrador, agendador, modelo.online, microfone is not None, ativador is not None,
-                    sintetizador)
+    servicos = Servicos(orquestrador, agendador, modelo.online, microfone is not None, ativador is not None,
+                        sintetizador)
+    orquestrador.trocar_idioma = lambda idioma: trocar_idioma(nucleo, servicos, idioma)
+    if nucleo.traducoes is not None:
+        nucleo.traducoes.ocupado = lambda: orquestrador.ocupado
+        nucleo.traducoes.definir_motor(modelo)
+    return servicos
 
 
 # ---------- Gravador de voz (robofael-gravar-voz) ----------

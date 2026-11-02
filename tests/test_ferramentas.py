@@ -6,7 +6,7 @@ from robofael.adaptadores.ferramentas import FERRAMENTAS, EntradaInvalida, Execu
 def test_todas_as_ferramentas_usam_streaming_de_entrada_e_schema_fechado():
     assert {f["name"] for f in FERRAMENTAS} == {
         "adicionar_tarefa", "listar_tarefas", "concluir_tarefa", "remover_tarefa", "criar_lembrete",
-        "listar_lembretes", "consultar_historico", "abrir_programa", "listar_programas"}
+        "listar_lembretes", "consultar_historico", "abrir_programa", "listar_programas", "concluir_todas_tarefas"}
     for f in FERRAMENTAS:
         assert f["eager_input_streaming"] is True
         assert f["input_schema"]["additionalProperties"] is False

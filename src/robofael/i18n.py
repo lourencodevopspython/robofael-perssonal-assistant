@@ -197,14 +197,20 @@ CATALOGO: dict[str, dict[Idioma, str | tuple[str, str]]] = {
     # ---------- modo offline ----------
     "off.ajuda": {
         PT: "Estou no modo offline. Posso dizer a hora, a data, anotar tarefa, listar tarefas, concluir tarefa pelo "
-            "número, lembrar daqui a alguns minutos, contar o que você fez num dia ou semana, abrir programas e "
-            "salvar a última resposta num documento, se você disser gerar doc.",
-        EN: "I'm in offline mode. I can tell the time and date, add, list and complete tasks by number, remind you "
-            "in a few minutes, tell you what you did on a day or week, open programs, and save my last answer to a "
-            "document when you say generate doc."},
+            "número ou todas de uma vez, lembrar daqui a alguns minutos, contar o que você fez num dia ou semana, "
+            "abrir programas, mudar para inglês e salvar a última resposta num documento, se você disser gerar doc.",
+        EN: "I'm in offline mode. I can tell the time and date, add and list tasks, complete them by number or all "
+            "at once, remind you in a few minutes, tell you what you did on a day or week, open programs, switch to "
+            "Portuguese, and save my last answer to a document when you say generate doc."},
     "off.anotei": {PT: "Anotei: {texto}.", EN: "Added: {texto}."},
     "off.concluida": {PT: "Boa! Tarefa {texto} concluída.", EN: "Nice! Task {texto} completed."},
     "off.tarefa_nao_achada": {PT: "Não achei essa tarefa.", EN: "I couldn't find that task."},
+    "off.todas_concluidas": {PT: "Pronto! Concluí {n} {tarefas}.", EN: "Done! I completed {n} {tarefas}."},
+    "off.nada_a_concluir": {PT: "Você não tem tarefas pendentes para concluir.",
+                            EN: "You don't have any pending tasks to complete."},
+    "idioma.trocado": {PT: "Pronto! A partir de agora eu falo português.",
+                       EN: "Okay! From now on I'll speak English."},
+    "idioma.ja_em_uso": {PT: "Já estou falando português.", EN: "I'm already speaking English."},
     "off.lembrete_criado": {PT: "Combinado, te lembro daqui a {n} {minutos}.",
                             EN: "Okay, I'll remind you in {n} {minutos}."},
     "off.sem_pendentes": {PT: "Você não tem tarefas pendentes.", EN: "You have no pending tasks."},

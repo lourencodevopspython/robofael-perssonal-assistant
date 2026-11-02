@@ -58,9 +58,11 @@ from robofael.dominio.eventos import (
     EstadoMudou,
     FalaReconhecida,
     Gravidade,
+    IdiomaMudou,
     NivelMicrofone,
     RespostaConcluida,
     RespostaParcial,
+    TraducoesAtualizadas,
 )
 from robofael.i18n import Idioma, Tradutor
 from robofael.portas import Preferencias
@@ -99,6 +101,7 @@ class Janela:
         self.nome_avatar = avatar if avatar in AVATARES else "cracha"
         self._configuracoes: JanelaConfiguracoes | None = None
         self._resposta = ""
+        self._idioma_interface = self.tr.idioma
         self.fila_ui = FilaTrabalhoUI()  # trabalho da thread principal, um pouco por quadro
         self._montar()
         self._assinar_eventos()
@@ -130,7 +133,7 @@ class Janela:
         self.canvas.pack(side="left")
         self.palco = Palco(self.canvas, (LARGURA_PALCO // 2, 330), LARGURA_PALCO, self.nucleo.config.nome_assistente,
                            self.tr)
-        self.painel = PainelAgenda(topo, self.nucleo.agenda, self.tr, width=LARGURA_PAINEL)
+        self.painel = PainelAgenda(topo, self.nucleo.agenda, self.tr, self.nucleo.exibir, width=LARGURA_PAINEL)
         self.painel.pack(side="right", fill="y", pady=(16, 0))
 
         barra = tk.Frame(r, bg=FUNDO)
@@ -170,6 +173,8 @@ class Janela:
         b.assinar(RespostaConcluida, lambda e: self.palco.legenda_robo(e.texto + (" …" if e.interrompida else "")))
         b.assinar(NivelMicrofone, lambda e: self.palco.definir_nivel_microfone(e.nivel))
         b.assinar(AgendaAtualizada, lambda _e: self.painel.atualizar())
+        b.assinar(TraducoesAtualizadas, lambda _e: self.painel.atualizar())
+        b.assinar(IdiomaMudou, self._ao_mudar_idioma)
         b.assinar(Aviso, self._ao_aviso)
         b.assinar(EscutaPassiva, lambda e: self.palco.definir_frase_ativacao(e.frase))
         b.assinar(ServicosProntos, self._ao_servicos_prontos)
@@ -332,7 +337,13 @@ class Janela:
         aplicar_idioma(self.nucleo, self.servicos, idioma)
         self._traduzir_interface()
 
+    def _ao_mudar_idioma(self, _evento: IdiomaMudou) -> None:
+        """Troca por voz ("mudar para inglês"); a tela de configurações já traduz na hora."""
+        if self._idioma_interface is not self.tr.idioma:
+            self._traduzir_interface()
+
     def _traduzir_interface(self) -> None:
+        self._idioma_interface = self.tr.idioma
         self.raiz.title(self.tr("ui.titulo_janela", nome=self.nucleo.config.nome_assistente))
         if self.entrada.get() and self._eh_placeholder(self.entrada.get()):
             self.entrada.delete(0, "end")

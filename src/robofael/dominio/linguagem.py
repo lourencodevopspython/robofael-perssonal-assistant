@@ -24,6 +24,23 @@ _HISTORICO = re.compile(
 )
 
 
+# "mudar para inglês", "muda o idioma pra português", "fale em inglês", "switch to Portuguese please".
+# O verbo abre a frase e o idioma a fecha: "como se fala cachorro em inglês?" é pergunta, não pedido.
+_TROCA_IDIOMA = re.compile(
+    r"^\s*(?:(?:ok|okay|ei|hey)(?:\s+\w+)?[,\s]+)?(?:(?:por favor|agora|please|now)[,\s]+)?"
+    r"(?:mud\w*|troc\w*|alter\w*|pass[ae]r?|fal[ae]r?|respond\w*|change|switch|speak|talk|answer|reply)\b"
+    r"(?:\s+(?:o|a|os|as|de|do|da|seu|sua|idioma|l[ií]ngua|respostas?|comigo|para|pra|em|no|na|"
+    r"the|your|language|answers?|with|me|to|in|into|only))*\s+(?P<idioma>ingl[eê]s|english|portugu[eê]s|portuguese)"
+    r"(?:[,\s]+(?:por favor|please|agora|now))?\s*[.!]?\s*$", re.I)
+
+
+def pede_troca_idioma(texto: str) -> Idioma | None:
+    """'mudar para inglês' -> Idioma.EN_US; 'change to Portuguese' -> Idioma.PT_BR; outra fala -> None."""
+    if not (m := _TROCA_IDIOMA.search(texto)):
+        return None
+    return Idioma.EN_US if m.group("idioma").lower().startswith(("ingl", "engl")) else Idioma.PT_BR
+
+
 def descrever_agora(agora: datetime, idioma: Idioma = Idioma.PT_BR) -> str:
     """Ex.: 'quarta-feira, 2026-10-21 16:25' / 'Wednesday, 2026-10-21 16:25' (contexto para o modelo)."""
     return f"{_DIAS[idioma][agora.weekday()]}, {agora:%Y-%m-%d %H:%M}"

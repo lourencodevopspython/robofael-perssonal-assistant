@@ -7,7 +7,7 @@
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
 ![Versão](https://img.shields.io/badge/vers%C3%A3o-3.9.1-0ea5e9)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-3776AB?logo=python&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-742%20passando-success?logo=pytest&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-794%20passando-success?logo=pytest&logoColor=white)
 ![Cobertura](https://img.shields.io/badge/cobertura-%E2%89%A580%25-success)
 ![mypy](https://img.shields.io/badge/mypy-100%25%20tipado-2a6db2)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%20.deb-E95420?logo=ubuntu&logoColor=white)
@@ -65,7 +65,7 @@ Troque de avatar com a tecla `T` ou em ⚙ → Avatar.
 - 👂 **Mãos livres:** diga **"ok Fael"**. A frase é detectada **localmente**, e o áudio do ambiente não sai do computador.
 - ⚡ **Resposta em fluxo:** a primeira frase já é falada enquanto o resto ainda é gerado.
 - 🧠 **Três cérebros:** Claude → **Ollama local** → modo offline, escolhidos sozinhos.
-- 🌎 **Português ou inglês**, com troca ao vivo; entende comandos nos dois.
+- 🌎 **Português ou inglês**, com troca ao vivo (até por voz: "mudar para inglês"); entende comandos nos dois e mostra as tarefas traduzidas.
 
 </td>
     <td width="50%" valign="top">
@@ -216,7 +216,8 @@ Também entende "gera um documento sobre…", "faça um doc…", "generate a doc
 **Exemplos de fala:**
 - "anota tarefa revisar o PR"
 - "quais são minhas tarefas?"
-- "terminei a tarefa 2"
+- "terminei a tarefa 2", "concluir todas as tarefas"
+- "ok Fael, mudar para inglês" / "ok Fael, change to Portuguese"
 - "me lembra daqui a 20 minutos de beber água"
 - "amanhã às 9 me lembra da daily" (exige o Claude)
 - "o que eu fiz ontem?", "o que concluí na semana passada?", "o que eu fiz no dia 20/10?"
@@ -327,16 +328,19 @@ O tempo é gasto lendo o pedido. Por isso cada pedido leva só as ferramentas do
 
 O Robofael responde em **português (pt-BR)** ou **inglês (en-US)**. Para escolher o idioma, use uma destas opções (a primeira da lista prevalece sobre as seguintes):
 
-1. **⚙ → Idioma**, que troca na hora e fica salvo;
+1. **por voz**, "ok Fael, mudar para inglês" ou "ok Fael, change to Portuguese" (também "fale em inglês", "switch to Portuguese"), ou **⚙ → Idioma**: troca na hora e fica salvo;
 2. `--idioma en-US` na linha de comando;
 3. a variável de ambiente `ROBOFAEL_IDIOMA=en-US`.
 
 | Muda com o idioma | Fica igual |
 |---|---|
 | Respostas faladas e legendas, modo offline, "o que eu fiz", programas, saudação e lembretes | A frase de ativação ("ok Fael") |
-| Interface: status, botões, painel, atalhos e configurações | O texto das suas tarefas (não é traduzido) |
+| Interface: status, botões, painel, atalhos e configurações | O texto guardado das suas tarefas (só a exibição é traduzida) |
 | Reconhecimento de fala (`pt-BR`/`en-US`), voz neural (Antonio → Andrew) e voz de reserva (gTTS) | O histórico e as preferências |
 | Instruções do Claude (troca → conversa nova) e formatos de data (21/10 → 10/21) | |
+| Tarefas e lembretes no painel e lembretes falados ("comprar pão" ↔ "buy bread") | |
+
+**Tarefas e lembretes traduzidos.** Cada item fica guardado como você disse, e o painel mostra a tradução para o idioma em uso: uma tarefa anotada em português aparece em inglês com a interface em inglês, e vice-versa. Quem traduz é o próprio modelo de linguagem (Claude ou Ollama), em segundo plano, e cada texto é traduzido uma única vez por idioma (fica guardado no banco). Enquanto a tradução não chega, e no modo offline, aparece o texto original. No processador, o modelo local leva cerca de 30 s para um lote de 8 itens, e espera o assistente terminar de falar para não atrasar a conversa.
 
 **Entender** é independente do idioma: "anota tarefa…" e "add task…", "o que eu fiz ontem?" e "what did I do yesterday?", "abre a calculadora" e "open the calculator" funcionam sempre. Só datas numéricas seguem o idioma: em português 05/10 é 5 de outubro; em inglês, é 10 de maio.
 
@@ -474,7 +478,7 @@ robofael/
 │   ├── i18n.py                   # idiomas, catálogo de mensagens e Tradutor
 │   ├── bootstrap.py              # raiz de composição
 │   └── configuracao.py
-├── tests/                        # 742 testes (pytest), inclusive de arquitetura e de desempenho
+├── tests/                        # 794 testes (pytest), inclusive de arquitetura e de desempenho
 ├── empacotamento/                # instalador .deb (scripts, atalhos, ícone, construção e teste)
 ├── docs/imagens/                 # prints e GIFs deste README
 ├── docs/monografia/              # monografia (TCC, ABNT) em LaTeX + PDF
@@ -828,7 +832,7 @@ Na versão 3.4 (medido no app real, depois da saudação, com o assistente parad
 ## Desenvolvimento
 
 ```bash
-make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 742 testes — o mesmo que a CI roda
+make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 794 testes — o mesmo que a CI roda
 make previa         # gera previa_<avatar>.png: boca fechada e nas vogais, para conferir um avatar
 make midia          # refaz os prints e GIFs deste README (docs/imagens) com o app real e dados de exemplo
 make testar-rapido  # sem os testes marcados como "lento" (renderização e interface)
@@ -864,6 +868,7 @@ A documentação acadêmica do projeto (requisitos funcionais e não funcionais,
 | `test_ollama` | Modelo local em camadas, ferramentas seguras, chamadas escritas como texto, queda para o modo offline, cliente HTTP contra um servidor falso e escolha do cérebro |
 | `test_quando`, `test_documentos` | Datas e horários em português e inglês ("amanhã às 9", "in five minutes") e o "gerar doc" (nomes, pasta, nada sobrescrito) |
 | `test_microfone_inicializacao` | Microfones do servidor de áudio, escolha só durante a abertura, reabertura da escuta passiva, atalho de login e comando no terminal |
+| `test_idioma_e_traducao` | "mudar para inglês" por voz (confirmação no idioma novo, preferência salva, falas parecidas que não trocam), tarefas e lembretes traduzidos (uma vez por idioma, cache no SQLite, itens numerados, falhas e prioridade da conversa) e "concluir todas as tarefas" |
 | `test_banco_e_modelos` | Mudar o banco de lugar com o app aberto, recusa de sobrescrever, backup conferido, banco ausente na abertura e catálogos do Claude e do Ollama |
 
 </details>

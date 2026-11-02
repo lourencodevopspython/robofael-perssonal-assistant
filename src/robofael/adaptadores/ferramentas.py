@@ -36,6 +36,9 @@ FERRAMENTAS: list[dict] = [
                 {"incluir_concluidas": {"type": "boolean"}}, ["incluir_concluidas"]),
     _ferramenta("concluir_tarefa", "Marca uma tarefa como concluída pelo id (use listar_tarefas para achar o id).",
                 {"id": {"type": "integer"}}, ["id"]),
+    _ferramenta("concluir_todas_tarefas",
+                "Marca como concluídas todas as tarefas pendentes de uma vez. Use só quando o usuário pedir "
+                "explicitamente para concluir todas.", {}, []),
     _ferramenta("remover_tarefa", "Apaga uma tarefa pelo id.", {"id": {"type": "integer"}}, ["id"]),
     _ferramenta("criar_lembrete", "Agenda um lembrete falado para uma data/hora local.",
                 {"texto": {"type": "string"},
@@ -95,6 +98,7 @@ class ExecutorFerramentas:
             "adicionar_tarefa": self._adicionar_tarefa,
             "listar_tarefas": self._listar_tarefas,
             "concluir_tarefa": self._concluir_tarefa,
+            "concluir_todas_tarefas": self._concluir_todas_tarefas,
             "remover_tarefa": self._remover_tarefa,
             "criar_lembrete": self._criar_lembrete,
             "listar_lembretes": self._listar_lembretes,
@@ -116,6 +120,10 @@ class ExecutorFerramentas:
 
     def _concluir_tarefa(self, e: dict) -> dict:
         return {"ok": True, "tarefa": self.agenda.concluir_tarefa(e["id"]).para_dict()}
+
+    def _concluir_todas_tarefas(self, _e: dict) -> dict:
+        concluidas = self.agenda.concluir_todas()
+        return {"ok": True, "concluidas": [t.para_dict() for t in concluidas], "total": len(concluidas)}
 
     def _remover_tarefa(self, e: dict) -> dict:
         self.agenda.remover_tarefa(e["id"])

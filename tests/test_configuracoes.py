@@ -178,6 +178,26 @@ def test_trocar_idioma_ao_vivo_retraduz_a_interface(janela, raiz):
 
 
 @pytest.mark.lento
+def test_troca_de_idioma_por_voz_retraduz_a_interface_e_o_painel(janela, raiz):
+    from robofael.i18n import Idioma
+
+    class Motor:
+        def traduzir(self, textos, idioma):
+            return [{"comprar pão": "buy bread"}.get(t, t) for t in textos]
+
+    janela.nucleo.agenda.adicionar_tarefa("comprar pão")
+    janela.nucleo.traducoes.motor = Motor()
+    sessao.trocar_idioma(janela.nucleo, janela.servicos, Idioma.EN_US)  # o que "mudar para inglês" faz
+    bombear(raiz, 0.2)
+    assert janela.botao.cget("text") == "🎤  Talk" and janela.painel.lbl_tarefas.cget("text") == "TASKS"
+    assert janela.painel.lista_tarefas.get(0) == "○  comprar pão"  # a tradução ainda não chegou: o original
+    assert janela.nucleo.traducoes.traduzir_pendentes()
+    bombear(raiz, 0.2)
+    assert janela.painel.lista_tarefas.get(0) == "○  buy bread"
+    janela.nucleo.traducoes.motor = None
+
+
+@pytest.mark.lento
 def test_configuracoes_trocam_idioma_e_lista_de_vozes(janela, raiz):
     from robofael.i18n import Idioma
 

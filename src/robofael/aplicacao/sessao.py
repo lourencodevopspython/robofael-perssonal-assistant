@@ -23,6 +23,7 @@ from robofael.aplicacao.barramento import Barramento
 from robofael.aplicacao.memoria import Memoria
 from robofael.aplicacao.orquestrador import Orquestrador
 from robofael.aplicacao.programas import ServicoProgramas
+from robofael.aplicacao.traducao import TraducaoAgenda
 from robofael.configuracao import NOME_BANCO, Configuracao, salvar_local_banco
 from robofael.dominio.agenda import Agenda
 from robofael.i18n import Idioma, Tradutor
@@ -60,6 +61,11 @@ class Nucleo:
     dispositivos: DispositivosAudio | None = None  # None: não há como listar os microfones
     inicializacao: InicializacaoSistema | None = None  # None: sistema sem suporte
     catalogos: tuple[CatalogoModelos, ...] = ()  # onde procurar modelos de linguagem (Claude, Ollama)
+    traducoes: TraducaoAgenda | None = None  # tarefas e lembretes no idioma da interface
+
+    def exibir(self, texto: str) -> str:
+        """Texto de uma tarefa ou lembrete no idioma atual (o original se ainda não houver tradução)."""
+        return self.traducoes.exibir(texto) if self.traducoes else texto
 
     @property
     def microfone(self) -> str | None:
@@ -160,6 +166,13 @@ def aplicar_idioma(nucleo: Nucleo, servicos: Servicos | None, idioma: Idioma) ->
     sint = servicos.sintetizador if servicos else None
     if sint is not None:
         configurar_voz(servicos, voz_para_idioma(sint.voz, idioma), sint.tom, sint.ritmo, idioma)
+
+
+def trocar_idioma(nucleo: Nucleo, servicos: Servicos | None, idioma: Idioma) -> None:
+    """"ok Fael, mudar para inglês": troca ao vivo e lembra a escolha nas próximas aberturas
+    (a voz salva, se for de outro idioma, dá lugar à voz padrão do idioma novo)."""
+    aplicar_idioma(nucleo, servicos, idioma)
+    nucleo.salvar_preferencias(dataclasses.replace(nucleo.preferencias, idioma=idioma.value))
 
 
 def aplicar_preferencias(nucleo: Nucleo, servicos: Servicos | None, preferencias: Preferencias) -> None:

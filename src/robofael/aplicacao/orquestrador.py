@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import queue
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from robofael.aplicacao.barramento import Barramento
 from robofael.aplicacao.documentos import ServicoDocumentos
@@ -32,8 +32,8 @@ from robofael.dominio.eventos import (
     RespostaConcluida,
     RespostaParcial,
 )
-from robofael.dominio.linguagem import eh_despedida
-from robofael.i18n import Tradutor
+from robofael.dominio.linguagem import eh_despedida, pede_troca_idioma
+from robofael.i18n import Idioma, Tradutor
 from robofael.portas import (
     Ativacao,
     DetectorAtivacao,
@@ -72,6 +72,8 @@ class Orquestrador:
                                      ao_comecar_a_tocar=lambda: self._ir_para(Estado.FALANDO))
         self.vigia: VigiaAtivacao | None = None
         self.ativador = ativador
+        # "mudar para inglês": quem troca o idioma de tudo (e salva a escolha); None: o pedido vai ao modelo
+        self.trocar_idioma: Callable[[Idioma], None] | None = None
 
     @property
     def reprodutor(self) -> ReprodutorAudio:
@@ -228,8 +230,12 @@ class Orquestrador:
                     return
             self.barramento.publicar(FalaReconhecida(texto))
             self._ir_para(Estado.PENSANDO)
-            pedido = interpretar_pedido_documento(texto) if self.documentos else None
-            interrompida = self._gerar_documento(pedido) if pedido else self._responder(texto)
+            idioma = pede_troca_idioma(texto) if self.trocar_idioma else None
+            pedido = interpretar_pedido_documento(texto) if self.documentos and idioma is None else None
+            if idioma is not None:
+                interrompida = self._trocar_idioma(idioma)
+            else:
+                interrompida = self._gerar_documento(pedido) if pedido else self._responder(texto)
             if interrompida or not self.continuo or eh_despedida(texto) or self.reconhecedor is None:
                 return
             self._falar_anuncios()
@@ -282,6 +288,14 @@ class Orquestrador:
         if self.documentos is not None and not fala.interrompida:
             self.documentos.registrar_troca(texto, fala.texto)  # para um "gerar doc" logo depois
         return fala.interrompida
+
+    def _trocar_idioma(self, idioma: Idioma) -> bool:
+        """Troca o idioma das respostas, da voz e do reconhecimento e confirma já no idioma novo."""
+        assert self.trocar_idioma is not None
+        if idioma is self.tr.idioma:
+            return self._falar([self.tr("idioma.ja_em_uso")]).interrompida
+        self.trocar_idioma(idioma)
+        return self._falar([self.tr("idioma.trocado")]).interrompida
 
     # ---------- Gerar documento ----------
     def _gerar_documento(self, pedido: PedidoDocumento) -> bool:

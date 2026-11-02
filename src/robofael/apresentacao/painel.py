@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import logging
 import tkinter as tk
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+from robofael.aplicacao.traducao import FEITAS_VISIVEIS
 from robofael.apresentacao.tema import BORDA, CARTAO, DESTAQUE, FONTE, SUPERFICIE, TEXTO, TEXTO_APAGADO, TEXTO_SUAVE
 from robofael.dominio.agenda import Agenda
 from robofael.i18n import Tradutor
@@ -18,10 +20,12 @@ log = logging.getLogger(__name__)
 
 
 class PainelAgenda(tk.Frame):
-    def __init__(self, mestre: tk.Misc, agenda: Agenda, tradutor: Tradutor | None = None, **kw: Any) -> None:
+    def __init__(self, mestre: tk.Misc, agenda: Agenda, tradutor: Tradutor | None = None,
+                 exibir: Callable[[str], str] = lambda texto: texto, **kw: Any) -> None:
         super().__init__(mestre, bg=SUPERFICIE, highlightbackground=BORDA, highlightthickness=2, **kw)
         self.agenda = agenda
         self.tr = tradutor or Tradutor()
+        self.exibir = exibir  # o texto de cada item no idioma atual (traduzido, se já houver tradução)
         self._ids_tarefas: list[int] = []
         self._ids_lembretes: list[int] = []
 
@@ -63,13 +67,13 @@ class PainelAgenda(tk.Frame):
 
     def atualizar(self) -> None:
         pendentes = self.agenda.pendentes()
-        feitas = [t for t in self.agenda.tarefas(incluir_concluidas=True) if t.feita][-5:]
+        feitas = [t for t in self.agenda.tarefas(incluir_concluidas=True) if t.feita][-FEITAS_VISIVEIS:]
         self._preencher(self.lista_tarefas, self._ids_tarefas,
-                        [(t.id, f"○  {t.texto}", TEXTO) for t in pendentes]
-                        + [(t.id, f"✓  {t.texto}", TEXTO_APAGADO) for t in feitas],
+                        [(t.id, f"○  {self.exibir(t.texto)}", TEXTO) for t in pendentes]
+                        + [(t.id, f"✓  {self.exibir(t.texto)}", TEXTO_APAGADO) for t in feitas],
                         vazio=self.tr("painel.sem_tarefas"))
         self._preencher(self.lista_lembretes, self._ids_lembretes,
-                        [(l.id, f"{l.quando.strftime(self.tr('fmt.lembrete'))}   {l.texto}", TEXTO)
+                        [(l.id, f"{l.quando.strftime(self.tr('fmt.lembrete'))}   {self.exibir(l.texto)}", TEXTO)
                          for l in self.agenda.proximos_lembretes()],
                         vazio=self.tr("painel.sem_lembretes"))
 
