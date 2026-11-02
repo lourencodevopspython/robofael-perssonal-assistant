@@ -1,16 +1,18 @@
-# Fotos do avatar
+# Avatares
 
-As fotos do avatar são pessoais e **não fazem parte do repositório**. Para rodar o Robofael, coloque aqui:
+As duas ilustrações do avatar fazem parte do repositório:
 
 | Arquivo | O que é |
 |---|---|
-| `cracha.png` | Foto de rosto **sem fundo** (PNG com transparência) |
-| `selfie.png` | Outra foto de rosto sem fundo |
-| `selfie_hd.jpeg` | (Opcional) a mesma selfie em alta resolução, ainda com fundo: o recorte da PNG é aplicado sobre ela para dar mais nitidez |
+| `cracha.png` | Ilustração de 500×500, **sem fundo** (PNG com transparência), braços cruzados |
+| `selfie.png` | Ilustração de 500×500, sem fundo, de frente |
 
-As posições do rosto (topo e centro da cabeça, boca, queixo e pescoço) de cada foto ficam em
-[`src/robofael/avatar/catalogo.py`](../../src/robofael/avatar/catalogo.py). Com fotos novas, meça esses pontos e
-ajuste o catálogo; `make previa` gera uma imagem para conferir o resultado.
+As posições do rosto (topo e centro da cabeça, boca, queixo e pescoço) de cada imagem ficam em
+[`src/robofael/avatar/catalogo.py`](../../src/robofael/avatar/catalogo.py). Nas ilustrações a boca já está aberta
+num sorriso, então o ponto `boca` fica na fresta entre os dentes de cima e os de baixo: é ali que a fala abre o vão.
 
-Sem as fotos o assistente funciona (voz, agenda, memória), mas sem o avatar, e os testes que renderizam o
-avatar são pulados.
+Para trocar uma imagem, mantenha o fundo transparente, meça os pontos de novo e confira com `make previa`.
+Opcionalmente, `arquivo_hd` no catálogo aponta para a mesma imagem em resolução maior, ainda com fundo: o recorte
+da PNG é aplicado sobre ela para dar mais nitidez.
+
+Qualquer outro arquivo desta pasta (originais, rascunhos) é ignorado pelo git.

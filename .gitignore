@@ -29,6 +29,8 @@ previa_*.png
 .DS_Store
 docs/monografia/build/
 
-# Fotos pessoais do avatar: ficam só no computador (ver assets/avatares/LEIAME.md)
+# Avatares: só as duas ilustrações em uso são versionadas; originais e rascunhos ficam no computador
 assets/avatares/*
 !assets/avatares/LEIAME.md
+!assets/avatares/cracha.png
+!assets/avatares/selfie.png

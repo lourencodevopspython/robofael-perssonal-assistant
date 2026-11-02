@@ -13,25 +13,26 @@ from typing import Any
 # `arquivo_hd` (opcional) é a mesma foto em resolução maior, ainda com fundo: o recorte
 # de `arquivo` é aplicado sobre ela.
 AVATARES: dict[str, dict[str, Any]] = {
+    # Ilustrações de 500x500 com a boca já aberta num sorriso: `boca` fica na fresta entre os dentes
+    # de cima e os de baixo, para a fala abrir um vão escuro ali (e não por cima dos dentes)
     "cracha": {
         "arquivo": "cracha.png",
-        "cabeca": (246, 39),
-        "boca": (232, 158),
-        "largura_boca": 46,
-        "queixo": 194,
-        "abertura_max": 10,
-        "pescoco": (246, 184, 224, 50),
-        "nitidez": 1.0,
+        "cabeca": (255, 6),
+        "boca": (244, 162),
+        "largura_boca": 56,
+        "queixo": 218,
+        "abertura_max": 9,
+        "pescoco": (250, 222, 280, 42),
+        "nitidez": 0.35,
     },
     "selfie": {
         "arquivo": "selfie.png",
-        "arquivo_hd": "selfie_hd.jpeg",
-        "cabeca": (142, 135),
-        "boca": (149, 259),
-        "largura_boca": 58,
-        "queixo": 296,
+        "cabeca": (245, 4),
+        "boca": (250, 237),
+        "largura_boca": 76,
+        "queixo": 316,
         "abertura_max": 12,
-        "pescoco": (152, 280, 315, 52),
-        "nitidez": 0.45,
+        "pescoco": (252, 300, 410, 55),
+        "nitidez": 0.35,
     },
 }

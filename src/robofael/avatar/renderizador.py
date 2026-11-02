@@ -44,6 +44,7 @@ def _caixa_busto(cfg: Configuracao_Avatar) -> tuple[float, float, float, float]:
 def _carregar(cfg: Configuracao_Avatar, altura: int, pasta: Path | str | None = None) -> tuple[Image.Image, Geometria]:
     pasta = Path(pasta or _pastas_padrao().pasta_avatares)
     img = Image.open(pasta / cfg["arquivo"]).convert("RGBA")
+    img_altura = img.height  # em pixels da `arquivo`
     fator = 1.0
     if cfg.get("arquivo_hd"):
         # Aplica o recorte (sem fundo) da PNG pequena sobre a foto original em alta resolução
@@ -68,8 +69,10 @@ def _carregar(cfg: Configuracao_Avatar, altura: int, pasta: Path | str | None = 
     _, topo = conv(0, cfg["cabeca"][1])
     pcx, plado = conv(cfg["pescoco"][0], cfg["pescoco"][1])
     _, pfrente = conv(0, cfg["pescoco"][2])
+    _, fim_foto = conv(0, img_altura)
     return img, {
         "mx": mx, "my": my, "mw": cfg["largura_boca"] * k, "queixo": queixo, "topo": topo,
+        "fim_foto": fim_foto / altura,  # onde a foto acaba, em fração da altura (>1: depois do recorte)
         "abertura_max": cfg["abertura_max"] * k,
         "pescoco": (pcx, plado, pfrente, cfg["pescoco"][3] * k),
     }
@@ -256,14 +259,17 @@ def _boca(base_arr: np.ndarray, g: Geometria, abertura: float, forma: str) -> np
 
 
 # ---------------------------------------------------------------- acabamento
-def _moldura(w: int, h: int) -> Image.Image:
-    """Máscara oval suave que deixa só o busto, esmaecendo os ombros."""
+def _moldura(w: int, h: int, fim_foto: float = 1.0) -> Image.Image:
+    """Máscara oval suave que deixa só o busto, esmaecendo os ombros. Se a foto acaba antes do fim
+    do recorte (`fim_foto` < 1), o esmaecimento termina ali, sem deixar a borda reta da foto à vista."""
     oval = Image.new("L", (w, h), 0)
     ImageDraw.Draw(oval).ellipse((w * 0.05, -h * 0.12, w * 0.95, h * 1.05), fill=255)
     oval = oval.filter(ImageFilter.GaussianBlur(w * 0.04))
-    h0 = int(h * 0.72)
-    fade = Image.new("L", (w, h), 255)
-    fade.paste(Image.linear_gradient("L").resize((w, h - h0)).point(lambda v: 255 - v), (0, h0))
+    h1 = max(2, min(h, int(h * fim_foto) - 2))
+    h0 = min(int(h * 0.72), int(h1 - h * 0.2))
+    fade = Image.new("L", (w, h), 0)
+    fade.paste(255, (0, 0, w, h0))
+    fade.paste(Image.linear_gradient("L").resize((w, h1 - h0)).point(lambda v: 255 - v), (0, h0))
     return ImageChops.multiply(oval, fade)
 
 
@@ -332,7 +338,7 @@ def gerar_quadros(nome: str = "cracha", altura: int = 480, pasta_cache: Path | s
 
         vestido = _camisa(img, g)
         base_arr = np.asarray(vestido).astype(np.float32)
-        moldura = _moldura(w_final, altura)
+        moldura = _moldura(w_final, altura, g["fim_foto"])
         halo = _halo(ImageChops.multiply(vestido.getchannel("A").resize((w_final, altura), LANCZOS), moldura))
         pasta.mkdir(parents=True, exist_ok=True)
 

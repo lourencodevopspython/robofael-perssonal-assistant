@@ -2,6 +2,19 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões seguem [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Alterado
+- **Avatares com as fotos novas** (ilustrações de 500x500, com a boca já aberta num sorriso): os pontos do
+  rosto do catálogo (`avatar/catalogo.py`) foram medidos de novo. A boca fica na fresta entre os dentes de
+  cima e os de baixo, então a fala abre um vão escuro sob os dentes de cima, e não por cima deles; a cabeça
+  volta a ficar no centro do anel. Nitidez menor (as ilustrações já têm contorno definido) e a selfie deixa
+  de usar `selfie_hd.jpeg`, que agora tem a mesma resolução da PNG.
+
+### Corrigido
+- Foto que acaba antes do fim do recorte do busto (a selfie nova): a base da camisa aparecia cortada reta.
+  O esmaecimento da moldura agora termina onde a foto acaba.
+
 ## [3.9.1] — 2026-10-29
 
 ### Corrigido

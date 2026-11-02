@@ -89,3 +89,26 @@ def test_segunda_chamada_usa_o_cache(quadros_cracha, monkeypatch):
     monkeypatch.setattr(renderizador, "_boca", lambda *a: pytest.fail("deveria ler do cache"))
     quadros, centro2 = gerar_quadros("cracha", ALTURA_TESTE, pasta_cache=cache, pasta_imagens=PASTA_IMAGENS)
     assert centro2 == centro and len(quadros[0]) == NIVEIS_BOCA
+
+
+@pytest.mark.parametrize("nome", list(AVATARES))
+def test_pontos_do_rosto_dentro_da_foto(nome):
+    """Catálogo medido na foto atual: boca entre a cabeça e o queixo, tudo dentro da imagem."""
+    from PIL import Image
+
+    cfg = AVATARES[nome]
+    largura, altura = Image.open(PASTA_IMAGENS / cfg["arquivo"]).size
+    (cx, topo), (mx, my) = cfg["cabeca"], cfg["boca"]
+    assert 0 <= topo < my < cfg["queixo"] < cfg["pescoco"][2] < altura  # a gola da frente fica abaixo do queixo
+    assert my < cfg["pescoco"][1] <= cfg["pescoco"][2]
+    assert 0 < cx < largura and abs(mx - cx) < cfg["largura_boca"]  # boca sob a cabeça
+
+
+def test_moldura_termina_onde_a_foto_acaba():
+    """Foto mais curta que o recorte: nada da borda reta da foto pode aparecer."""
+    from robofael.avatar.renderizador import _moldura
+
+    curta = np.asarray(_moldura(100, 200, fim_foto=0.8))
+    assert curta[160:].max() == 0 and curta[60, 50] == 255
+    inteira = np.asarray(_moldura(100, 200))
+    assert inteira[150, 50] > 0  # foto que vai até o fim: esmaece até a base, como antes
