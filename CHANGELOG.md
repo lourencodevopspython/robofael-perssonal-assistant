@@ -11,6 +11,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
   volta a ficar no centro do anel. Nitidez menor (as ilustrações já têm contorno definido) e a selfie deixa
   de usar `selfie_hd.jpeg`, que agora tem a mesma resolução da PNG.
 
+### Documentação
+- README mais visual: apresentação com o avatar falando (GIF), "Veja em ação" com a conversa completa em GIF,
+  prints da janela e das configurações, quadro dos avatares com as formas da boca, recursos em grade,
+  diagrama de como funciona, sumário em tabela e seções longas (fluxos, testes, pacote) em blocos que abrem
+  com um clique. Números atualizados (742 testes) e o endereço do repositório corrigido.
+- `make midia` (`scripts/capturar_midia.py`) refaz os prints e GIFs com o app real, dados de exemplo numa pasta
+  temporária e áudio mudo.
+
 ### Corrigido
 - Foto que acaba antes do fim do recorte do busto (a selfie nova): a base da camisa aparecia cortada reta.
   O esmaecimento da moldura agora termina onde a foto acaba.

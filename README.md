@@ -1,45 +1,129 @@
-# Robofael 🤖
+<div align="center">
 
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF)](.github/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-3776AB)
-![Tipos](https://img.shields.io/badge/mypy-ok-2a6db2)
-![Testes](https://img.shields.io/badge/testes-508-success)
+# 🤖 Robofael
 
-Assistente pessoal de atividades diárias com **avatar animado feito a partir de fotos reais**.
-Ele **ouve** pelo microfone, **pensa** com o Claude (ou em modo offline) e **responde falando**:
-a boca acompanha a voz e o tom de voz é ajustado ao do usuário.
+**Seu assistente pessoal de atividades diárias, com um avatar que ouve, pensa e responde falando.**
 
-- 👂 **Mãos livres**: diga **"ok Fael"** para chamar o assistente. A frase é detectada localmente, sem enviar o áudio do ambiente para a internet.
-- 🗣️ **Conversa fluida**: a resposta começa a ser falada enquanto ainda está sendo gerada.
-- 🎙️ **Microfone com detecção de fala**: as barras mostram o nível real da sua voz, e a escuta é cancelável.
-- 📋 **Tarefas e lembretes** por voz ou clique, com aviso falado no horário exato.
-- 🧠 **Memória de longo prazo** (SQLite) com **histórico auditável**: pergunte *"o que eu fiz ontem?"*, *"…na semana passada?"*, *"…no dia 20?"*.
-- 🖥️ **Abre programas instalados** no Linux: *"abre o navegador"*, *"abre a calculadora"*, *"abre as configurações"*.
-- ⚙️ **Tela de configurações**: idioma, avatar, voz (voz base, tom e ritmo, com teste), microfone, ativação por voz e inicialização, salvos entre sessões.
-- 🎤 **Escolha do microfone** entre os conectados ao computador, trocando na hora (sem reabrir o app).
-- 🚀 **Abre junto com o computador** e com o comando `robofael` em qualquer terminal, se você quiser.
-- 💾 **Banco onde você quiser e backup com um clique**: mude o `memoria.db` de pasta (ex.: uma pasta sincronizada) e salve cópias conferidas, com o assistente aberto.
-- 🔎 **Mostra o cérebro em uso** (Claude, Ollama ou offline) e os modelos compatíveis de cada um.
-- 🌎 **Português ou inglês**: responde, fala e mostra a interface no idioma configurado — e entende comandos nos dois.
-- 🧑 **Avatar em busto** com camisa futurista, boca animada por volume e formato de vogal, a 60 fps.
-- 🎚️ **Voz com o seu tom**, a partir de um perfil gravado em 1 minuto.
-- 📴 **Modo offline**: funciona sem chave de API, com comandos básicos.
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-3.9.1-0ea5e9)
+![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-3776AB?logo=python&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-742%20passando-success?logo=pytest&logoColor=white)
+![Cobertura](https://img.shields.io/badge/cobertura-%E2%89%A580%25-success)
+![mypy](https://img.shields.io/badge/mypy-100%25%20tipado-2a6db2)
+![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%20.deb-E95420?logo=ubuntu&logoColor=white)
+
+<img src="docs/imagens/falando.gif" alt="O avatar do Robofael falando a saudação, com a boca sincronizada com a voz" width="340">
+
+**[🚀 Instalar](#instalar-no-ubuntu-pacote-deb)** ·
+**[🎬 Ver em ação](#-veja-em-ação)** ·
+**[🗣️ Usar](#uso)** ·
+**[⚙️ Configurar](#configuração)** ·
+**[🏛️ Arquitetura](#arquitetura)** ·
+**[🛠️ Desenvolver](#desenvolvimento)**
+
+</div>
 
 ---
 
-## Sumário
+## 🎬 Veja em ação
 
-1. [Instalar no Ubuntu](#instalar-no-ubuntu-pacote-deb)
-1. [Início rápido (desenvolvimento)](#início-rápido-desenvolvimento)
-2. [Uso](#uso)
-3. [Configuração](#configuração) · [Cérebro local (Ollama)](#cérebro-local-ollama)
-4. [Arquitetura](#arquitetura)
-5. [Fluxos de execução](#fluxos-de-execução)
-6. [Desempenho](#desempenho)
-7. [Decisões de arquitetura](#decisões-de-arquitetura)
-8. [Desenvolvimento](#desenvolvimento)
-9. [Dados e privacidade](#dados-e-privacidade)
-10. [Solução de problemas](#solução-de-problemas)
+Um pedido digitado: o assistente **pensa** (anel âmbar), anota a tarefa no painel e **responde falando** (anel ciano, barras com o volume da voz):
+
+<p align="center">
+  <img src="docs/imagens/conversa.gif" alt="Pedido 'anota tarefa ligar para o dentista': o assistente pensa, a tarefa aparece no painel e ele responde falando" width="620">
+</p>
+
+<table>
+  <tr>
+    <td width="55%" align="center"><img src="docs/imagens/janela.png" alt="Janela principal com o avatar, a legenda da saudação e o painel de tarefas e lembretes"></td>
+    <td width="45%" align="center"><img src="docs/imagens/configuracoes.png" alt="Tela de configurações: idioma, avatar, voz, microfone, ativação por voz, inicialização, modelo de linguagem e banco"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Janela principal</b><br>avatar, legendas, painel de tarefas e lembretes</td>
+    <td align="center"><b>Configurações (⚙)</b><br>voz, microfone, inicialização, modelo em uso, banco e backup</td>
+  </tr>
+</table>
+
+<details>
+<summary><b>🧑 Os dois avatares e as formas da boca</b> (clique para abrir)</summary>
+<br>
+
+A boca é deformada a partir da ilustração em **12 níveis de abertura × 3 formatos de vogal**, escolhidos a cada quadro pelo volume e pelo timbre da voz sintetizada:
+
+<p align="center"><img src="docs/imagens/avatares.png" alt="Os avatares crachá e selfie com a boca fechada e nas vogais a, o/u e e/i" width="760"></p>
+
+Troque de avatar com a tecla `T` ou em ⚙ → Avatar.
+</details>
+
+## ✨ O que ele faz
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+
+**🗣️ Conversa**
+- 👂 **Mãos livres:** diga **"ok Fael"**. A frase é detectada **localmente**, e o áudio do ambiente não sai do computador.
+- ⚡ **Resposta em fluxo:** a primeira frase já é falada enquanto o resto ainda é gerado.
+- 🧠 **Três cérebros:** Claude → **Ollama local** → modo offline, escolhidos sozinhos.
+- 🌎 **Português ou inglês**, com troca ao vivo; entende comandos nos dois.
+
+</td>
+    <td width="50%" valign="top">
+
+**📋 Agenda e memória**
+- ✅ **Tarefas e lembretes** por voz ou clique, com aviso falado no horário exato.
+- 🗂️ **Memória de longo prazo** auditável (SQLite + SHA-256): *"o que eu fiz ontem?"*
+- 📝 **"gerar doc sobre…"** escreve um documento em Markdown.
+- 💾 **Banco onde você quiser** e **backup conferido** com um clique.
+
+</td>
+  </tr>
+  <tr>
+    <td valign="top">
+
+**🧑 Avatar e voz**
+- 🎭 **Avatar em busto** a partir das suas ilustrações, com a boca sincronizada à voz a 60 fps.
+- 🎚️ **Voz com o seu tom**, a partir de um perfil gravado em 1 minuto.
+- 🎤 **Escolha do microfone** entre os conectados, na hora.
+
+</td>
+    <td valign="top">
+
+**🖥️ Integração com o Linux**
+- 🚀 **Abre programas** pelo nome: *"abre o navegador"*, *"abre a calculadora"*.
+- 🔁 **Abre com o computador** e pelo comando `robofael` no terminal, se você quiser.
+- 📦 **Instalador `.deb`** para Ubuntu, que funciona sem internet.
+
+</td>
+  </tr>
+</table>
+
+## 🔄 Como funciona, em uma imagem
+
+```mermaid
+flowchart LR
+    A(["🗣️ você fala<br/>ou digita"]) --> B{"ok Fael?<br/>Vosk, local"}
+    B -->|sim| C["🎙️ reconhecimento<br/>Google"]
+    A -->|ESPAÇO / texto| C
+    C --> D{"🧠 cérebro"}
+    D -->|nuvem| E["Claude"]
+    D -->|local| F["Ollama"]
+    D -->|sem modelo| G["modo offline"]
+    E & F & G --> H["🔧 ferramentas<br/>agenda · memória · programas"]
+    E & F & G --> I["🔊 voz neural<br/>frase a frase"]
+    I --> J(["🧑 avatar fala<br/>boca pelo volume e timbre"])
+```
+
+---
+
+## 📚 Sumário
+
+| | | |
+|---|---|---|
+| 🚀 [Instalar no Ubuntu](#instalar-no-ubuntu-pacote-deb) | ⚙️ [Configuração](#configuração) | 🔀 [Fluxos de execução](#fluxos-de-execução) |
+| 💻 [Início rápido (desenvolvimento)](#início-rápido-desenvolvimento) | 🦙 [Cérebro local (Ollama)](#cérebro-local-ollama) | 📈 [Desempenho](#desempenho) |
+| 🗣️ [Uso](#uso) | 🌎 [Idiomas](#idiomas) | 🛠️ [Desenvolvimento](#desenvolvimento) |
+| 🏛️ [Arquitetura](#arquitetura) | 🧭 [Decisões de arquitetura](#decisões-de-arquitetura) | 🔒 [Dados e privacidade](#dados-e-privacidade) · 🩺 [Solução de problemas](#solução-de-problemas) |
 
 ---
 
@@ -62,18 +146,22 @@ Depois disso:
   - os dados pessoais só saem se você apagar `~/.local/share/robofael`.
 - **Testar o pacote sem instalar:** `make testar-deb`. Ele instala numa pasta temporária e verifica a integridade, o ambiente, os lançadores, onde os dados são gravados e a remoção.
 
-Detalhes do pacote:
+<details>
+<summary><b>📦 Onde cada coisa fica no sistema</b></summary>
+<br>
 
 | Item | Onde fica |
 |---|---|
 | Programa (venv criado na instalação) | `/opt/robofael/venv` |
 | Dependências Python (wheels) e modelo do Vosk | `/opt/robofael/wheels`, `/opt/robofael/modelos` |
-| Fotos do avatar | `/opt/robofael/assets` |
+| Ilustrações do avatar | `/opt/robofael/assets` |
 | Comandos | `/usr/bin/robofael`, `/usr/bin/robofael-gravar-voz` |
 | Menu e ícone | `/usr/share/applications/robofael*.desktop`, `/usr/share/icons/hicolor/*/apps/robofael.png` |
 
 - **Versão do Python:** as wheels são construídas para o Python da máquina que gera o pacote. Para outra versão do Ubuntu, rode `make deb` nela.
-- **Fotos:** o pacote inclui as fotos de `assets/avatares/`. Lembre-se disso antes de distribuí-lo.
+- **Avatares:** o pacote inclui as ilustrações de `assets/avatares/`.
+
+</details>
 
 ## Início rápido (desenvolvimento)
 
@@ -83,13 +171,13 @@ Detalhes do pacote:
 - Internet, para o reconhecimento de fala e a voz neural.
 
 ```bash
-git clone git@github.com:LourencoCosta/robofael-perssonal-assistant.git robofael && cd robofael
+git clone git@github.com:lourencodevopspython/robofael-perssonal-assistant.git robofael && cd robofael
 make instalar                        # .venv + pacote + ferramentas de dev + pre-commit + modelo de voz local (~31 MB)
 export ANTHROPIC_API_KEY=sua-chave   # opcional; sem ela usa o Ollama local ou o modo offline
 make executar                        # ou: make executar ARGS="--avatar selfie --continuo"
 ```
 
-**Fotos do avatar:** são pessoais e não estão no repositório. Coloque as suas em `assets/avatares/`, seguindo [`assets/avatares/LEIAME.md`](assets/avatares/LEIAME.md). Sem elas o assistente funciona, mas sem o avatar.
+**Avatares:** as duas ilustrações (`cracha.png` e `selfie.png`) já vêm no repositório. Para usar as suas, siga [`assets/avatares/LEIAME.md`](assets/avatares/LEIAME.md).
 
 Outras formas de abrir: `scripts/iniciar.sh`, `.venv/bin/robofael` e `.venv/bin/python -m robofael`.
 Para registrar a sua voz: `make gravar-voz`. `make` sem argumentos lista todos os comandos.
@@ -112,13 +200,18 @@ Para registrar a sua voz: `make gravar-voz`. `make` sem argumentos lista todos o
 | Ver o modelo de linguagem em uso e os disponíveis; mudar o banco de lugar ou fazer backup | botão **⚙** → seções de baixo |
 | Fechar | `Ctrl+Q` |
 
-**Gerar documento:**
+<details>
+<summary><b>📝 Gerar documento ("gerar doc")</b></summary>
+<br>
+
 - "gerar doc" salva a última resposta do assistente;
 - "gerar doc sobre energia solar" pede ao modelo um texto completo sobre o assunto. O documento não é lido em voz alta: o assistente avisa que vai escrever, mostra o texto na legenda enquanto escreve e diz onde salvou.
 
 Os arquivos ficam em `~/Documentos/Robofael` (ou `~/Documents/Robofael`), em Markdown: `2026-10-29 1015 - energia-solar.md`, com título, data, pedido e conteúdo. Nada é sobrescrito: um nome repetido ganha " (2)".
 
 Também entende "gera um documento sobre…", "faça um doc…", "generate a doc about…" e "gerar dock" (como o reconhecimento de fala às vezes escreve). Funciona com o Claude, com o modelo local e no modo offline; no offline, o assunto vai como comando ("gerar doc das minhas tarefas pendentes"). No processador, o modelo local leva cerca de 1 a 1,5 minuto para escrever um documento de ~350 palavras.
+
+</details>
 
 **Exemplos de fala:**
 - "anota tarefa revisar o PR"
@@ -149,7 +242,7 @@ Também entende "gera um documento sobre…", "faça um doc…", "generate a doc
 | `ROBOFAEL_VOZ` | `pt-BR-AntonioNeural` | Voz neural padrão (o perfil gravado tem prioridade) |
 | `ROBOFAEL_DADOS` | `./dados` | `memoria.db` (agenda, histórico e preferências), perfil e gravações de voz |
 | `ROBOFAEL_CACHE` | `./.cache` | Quadros do avatar e falas sintetizadas |
-| `ROBOFAEL_ASSETS` | `./assets` | Fotos dos avatares |
+| `ROBOFAEL_ASSETS` | `./assets` | Ilustrações dos avatares |
 | `ROBOFAEL_DOCUMENTOS` | `<Documentos>/Robofael` | Onde o "gerar doc" salva os arquivos (a pasta de documentos vem do XDG: `Documentos` ou `Documents`) |
 
 Até a versão 3.4.0 as variáveis se chamavam `EUROBO_*`. Esses nomes ainda são aceitos quando a `ROBOFAEL_*` correspondente não está definida, com um aviso no log; os comandos antigos `eurobo` e `eurobo-gravar-voz` também continuam funcionando no ambiente de desenvolvimento.
@@ -368,21 +461,22 @@ O `ruff` impõe no CI: complexidade ciclomática ≤ 10 por função, funções 
 ### Estrutura
 
 ```
-EuRobo/
-├── assets/avatares/              # fotos de origem
+robofael/
+├── assets/avatares/              # ilustrações do avatar (cracha.png, selfie.png)
 ├── src/robofael/
 │   ├── dominio/                  # entidades, regras, estados, eventos
 │   ├── portas.py                 # contratos da arquitetura hexagonal
 │   ├── aplicacao/                # orquestrador, pipeline, vigia, sessão, memória, agendador...
-│   ├── adaptadores/              # Claude, offline, ferramentas, SQLite, microfone, Vosk, TTS, áudio, programas, inicialização
+│   ├── adaptadores/              # Claude, Ollama, offline, ferramentas, SQLite, microfone, Vosk, TTS, áudio, programas, inicialização
 │   ├── audio/                    # DSP puro: tom, envelope, VAD, perfil de voz
 │   ├── avatar/                   # catálogo, renderizador (paralelo + cache), animação
 │   ├── apresentacao/             # janela, palco, painel, gravador, tema
 │   ├── i18n.py                   # idiomas, catálogo de mensagens e Tradutor
 │   ├── bootstrap.py              # raiz de composição
 │   └── configuracao.py
-├── tests/                        # 546 testes (pytest), inclusive de arquitetura e de desempenho
+├── tests/                        # 742 testes (pytest), inclusive de arquitetura e de desempenho
 ├── empacotamento/                # instalador .deb (scripts, atalhos, ícone, construção e teste)
+├── docs/imagens/                 # prints e GIFs deste README
 ├── docs/monografia/              # monografia (TCC, ABNT) em LaTeX + PDF
 ├── .github/workflows/ci.yml      # lint + tipos + testes (Xvfb)
 ├── .pre-commit-config.yaml
@@ -394,7 +488,10 @@ EuRobo/
 
 ## Fluxos de execução
 
-### 1. Inicialização (janela em menos de 1 s)
+Clique em cada fluxo para ver o diagrama.
+
+<details open>
+<summary><b>1. Inicialização (janela em menos de 1 s)</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -423,7 +520,10 @@ sequenceDiagram
     J->>J: habilita o botão · inicia o agendador · fala a saudação
 ```
 
-### 2. Conversa em pipeline (o coração do sistema)
+</details>
+
+<details>
+<summary><b>2. Conversa em pipeline (o coração do sistema)</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -466,7 +566,10 @@ sequenceDiagram
 - O microfone para de gravar, o reprodutor para o áudio e o gerador do modelo é fechado, o que encerra o stream HTTP e desfaz a rodada no histórico.
 - A interface é liberada em cerca de 10 ms. Os estágios terminam em segundo plano, e a interação seguinte espera por eles antes de usar o histórico.
 
-### 3. Ativação por voz: "ok Fael"
+</details>
+
+<details>
+<summary><b>3. Ativação por voz: "ok Fael"</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -510,7 +613,10 @@ sequenceDiagram
 
 O microfone nunca é disputado: qualquer interação (ESPAÇO, texto ou lembrete) cancela a vigia e espera ela fechar o microfone antes de abri-lo.
 
-### 4. Memória de longo prazo: "o que eu fiz?"
+</details>
+
+<details>
+<summary><b>4. Memória de longo prazo: "o que eu fiz?"</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -538,7 +644,10 @@ sequenceDiagram
 - **Auditoria:** `make integridade` recalcula a cadeia de hashes e aponta o primeiro registro alterado, removido ou inserido por fora do sistema.
 - **Migração:** na primeira execução, a agenda do `agenda.json` (versões anteriores) é importada para o banco e o JSON é renomeado para `.migrado-<data>`, sem nada ser apagado.
 
-### 5. Abrir programas
+</details>
+
+<details>
+<summary><b>5. Abrir programas</b></summary>
 
 ```mermaid
 flowchart LR
@@ -557,7 +666,10 @@ flowchart LR
 - **Sinônimos:** cobrem apps que só têm o nome em inglês no registro ("configurações" → *Settings*, "calculadora" → *Calculator*).
 - **Prioridade:** no modo offline, os comandos de agenda vêm primeiro, então *"anota tarefa abrir conta no banco"* vira uma tarefa e não abre nada.
 
-### 6. Máquina de estados
+</details>
+
+<details>
+<summary><b>6. Máquina de estados</b></summary>
 
 ```mermaid
 stateDiagram-v2
@@ -577,7 +689,10 @@ stateDiagram-v2
 
 Transições fora deste grafo levantam `TransicaoInvalida`. Cada mudança vira um evento, e a interface interpola a cor do novo estado ao longo de cerca de 0,3 s.
 
-### 7. Ferramentas do Claude (laço com streaming)
+</details>
+
+<details>
+<summary><b>7. Ferramentas do Claude (laço com streaming)</b></summary>
 
 ```mermaid
 flowchart TD
@@ -600,7 +715,10 @@ flowchart TD
     F -- end_turn --> O[append assistant · fim]
 ```
 
-### 8. Animação da boca
+</details>
+
+<details>
+<summary><b>8. Animação da boca</b></summary>
 
 ```mermaid
 flowchart LR
@@ -614,7 +732,10 @@ flowchart LR
     G & H --> I["quadro[forma][nível]"]
 ```
 
-### 9. Renderização do avatar
+</details>
+
+<details>
+<summary><b>9. Renderização do avatar</b></summary>
 
 ```mermaid
 flowchart LR
@@ -628,7 +749,10 @@ flowchart LR
     H --> I[(.cache/avatar/&lt;nome&gt;_&lt;hash&gt;)]
 ```
 
-### 10. Lembretes no horário exato
+</details>
+
+<details>
+<summary><b>10. Lembretes no horário exato</b></summary>
 
 ```mermaid
 sequenceDiagram
@@ -644,6 +768,8 @@ sequenceDiagram
     end
     Note over O: se estiver ocupado, o anúncio entra na fila e é falado assim que a interação atual termina
 ```
+
+</details>
 
 ---
 
@@ -702,7 +828,9 @@ Na versão 3.4 (medido no app real, depois da saudação, com o assistente parad
 ## Desenvolvimento
 
 ```bash
-make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 546 testes — o mesmo que a CI roda
+make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 742 testes — o mesmo que a CI roda
+make previa         # gera previa_<avatar>.png: boca fechada e nas vogais, para conferir um avatar
+make midia          # refaz os prints e GIFs deste README (docs/imagens) com o app real e dados de exemplo
 make testar-rapido  # sem os testes marcados como "lento" (renderização e interface)
 make cobertura      # relatório linha a linha
 make formatar       # correções automáticas do ruff
@@ -710,6 +838,10 @@ make monografia     # gera a monografia (TCC, padrão ABNT) em docs/monografia/m
 ```
 
 A documentação acadêmica do projeto (requisitos funcionais e não funcionais, arquitetura, passo a passo da construção, revisão SOLID e validação) está em [`docs/monografia/monografia.pdf`](docs/monografia/monografia.pdf), gerada a partir dos fontes LaTeX da mesma pasta.
+
+<details>
+<summary><b>🧪 O que cada suíte de testes garante</b></summary>
+<br>
 
 | Suíte | O que garante |
 |---|---|
@@ -729,18 +861,24 @@ A documentação acadêmica do projeto (requisitos funcionais e não funcionais,
 | `test_bootstrap_ui` | Composição, queda para o modo offline e **a janela Tk real** com serviços simulados (pulado sem servidor gráfico) |
 | `test_arquitetura` | **Regra de dependência entre camadas**, domínio sem bibliotecas de infraestrutura, contratos cumpridos pelo SQLite (LSP), `Agenda` com repositório em memória (DIP), tabelas extensíveis (OCP) e responsabilidades separadas (SRP) |
 | `test_sessao_pipeline_vigia` | Pipeline de fala isolado (uma faixa por frase, cancelamento, falha do modelo), vigia isolada (entrega, liberação do microfone, desligamento após falhas) e aplicação das preferências |
+| `test_ollama` | Modelo local em camadas, ferramentas seguras, chamadas escritas como texto, queda para o modo offline, cliente HTTP contra um servidor falso e escolha do cérebro |
+| `test_quando`, `test_documentos` | Datas e horários em português e inglês ("amanhã às 9", "in five minutes") e o "gerar doc" (nomes, pasta, nada sobrescrito) |
+| `test_microfone_inicializacao` | Microfones do servidor de áudio, escolha só durante a abertura, reabertura da escuta passiva, atalho de login e comando no terminal |
+| `test_banco_e_modelos` | Mudar o banco de lugar com o app aberto, recusa de sobrescrever, backup conferido, banco ausente na abertura e catálogos do Claude e do Ollama |
+
+</details>
 
 A cobertura de domínio e aplicação fica entre 94% e 100%. Microfone e ALSA dependem de hardware e são verificados manualmente.
 
 **Novo avatar:**
-1. Coloque o PNG sem fundo (e, se tiver, o original em alta resolução) em `assets/avatares/`.
-2. Adicione os pontos do rosto em [`catalogo.py`](src/robofael/avatar/catalogo.py).
-3. Rode `make previa`.
+1. Coloque a imagem sem fundo (PNG com transparência) em `assets/avatares/`.
+2. Meça os pontos do rosto e registre em [`catalogo.py`](src/robofael/avatar/catalogo.py). Se a boca já estiver aberta na imagem, o ponto `boca` fica na fresta entre os dentes.
+3. Rode `make previa` e confira a boca fechada e nas vogais.
 
 ## Dados e privacidade
 
 - `dados/` (`memoria.db` com agenda, histórico e preferências; perfil e **gravações da sua voz**) e `.cache/` ficam fora do git.
-- As fotos em `assets/avatares/` são pessoais: avalie antes de publicar o repositório.
+- As ilustrações em `assets/avatares/` são versionadas e vão para o GitHub junto com o código; originais e rascunhos da pasta ficam fora do git.
 - A escuta de "ok Fael" é **local** (Vosk): o que é falado no ambiente não sai do computador.
 - Serviços externos:
   - **Google** recebe o áudio do microfone só depois da ativação (ESPAÇO ou "ok Fael"), para reconhecer o comando.

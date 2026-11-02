@@ -2,7 +2,7 @@ PY ?= .venv/bin/python
 ARGS ?=
 
 .DEFAULT_GOAL := ajuda
-.PHONY: monografia deb testar-deb integridade baixar-modelo-voz ajuda instalar executar gravar-voz testar testar-rapido cobertura lint formatar tipos verificar previa limpar
+.PHONY: midia monografia deb testar-deb integridade baixar-modelo-voz ajuda instalar executar gravar-voz testar testar-rapido cobertura lint formatar tipos verificar previa limpar
 
 ajuda:             ## Lista os comandos disponíveis
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -38,6 +38,9 @@ tipos:             ## Checagem de tipos (mypy)
 	$(PY) -m mypy
 
 verificar: lint tipos testar  ## Tudo o que a CI roda
+
+midia:             ## Refaz os prints e GIFs do README (docs/imagens) a partir do app real
+	$(PY) scripts/capturar_midia.py docs/imagens
 
 previa:            ## Gera prévias dos avatares (previa_<nome>.png)
 	$(PY) -c "from robofael.avatar import AVATARES; from robofael.avatar.renderizador import gerar_previa; [gerar_previa(n, f'previa_{n}.png') for n in AVATARES]"
