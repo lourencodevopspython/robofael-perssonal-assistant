@@ -4,6 +4,7 @@ e gera os quadros da boca (níveis de abertura x formatos de vogal), com cache e
 from __future__ import annotations
 
 import hashlib
+import marshal
 import math
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -301,6 +302,17 @@ def _pastas_padrao() -> Configuracao:
     return Configuracao.do_ambiente()
 
 
+def _codigo_deste_modulo() -> str:
+    """O código do renderizador, para o cache ser refeito quando ele muda. No executável do Windows só há o
+    bytecode (que também muda junto com o código)."""
+    try:
+        return Path(__file__).read_text(encoding="utf-8")
+    except OSError:
+        carregador = __spec__.loader if __spec__ else None
+        codigo = getattr(carregador, "get_code", lambda _nome: None)(__name__)
+        return marshal.dumps(codigo).hex() if codigo is not None else ""
+
+
 def gerar_quadros(nome: str = "cracha", altura: int = 480, pasta_cache: Path | str | None = None,
                   pasta_imagens: Path | str | None = None,
                   trabalhadores: int | None = None) -> tuple[list[list[Image.Image]], tuple[float, float]]:
@@ -318,7 +330,7 @@ def gerar_quadros(nome: str = "cracha", altura: int = 480, pasta_cache: Path | s
         pasta_cache = pasta_cache or cfg_app.pasta_cache_avatar
         pasta_imagens = pasta_imagens or cfg_app.pasta_avatares
     cfg = AVATARES[nome]
-    origem = Path(__file__).read_text(encoding="utf-8") + repr(sorted(cfg.items())) + nome + str(altura)
+    origem = _codigo_deste_modulo() + repr(sorted(cfg.items())) + nome + str(altura)
     chave = hashlib.sha1(origem.encode()).hexdigest()[:12]
     pasta = Path(pasta_cache) / f"{nome}_{chave}"
     arquivos = [[pasta / f"{f}_{n:02d}.png" for n in range(NIVEIS_BOCA)] for f in FORMAS]

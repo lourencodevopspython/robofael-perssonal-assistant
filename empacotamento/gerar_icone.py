@@ -1,6 +1,8 @@
 """Gera o ícone do Robofael (rosto do avatar num círculo com o anel ciano) em vários tamanhos.
 
 Uso: python empacotamento/gerar_icone.py <pasta_destino>   -> <pasta>/<N>x<N>/apps/robofael.png
+     python empacotamento/gerar_icone.py --windows <pasta>  -> <pasta>/robofael.ico (executável e instalador)
+                                                              e <pasta>/robofael.png (ícone da janela)
 """
 
 import sys
@@ -41,7 +43,18 @@ def gerar(base: int = 512) -> Image.Image:
     return icone
 
 
+def gerar_windows(destino: Path) -> None:
+    destino.mkdir(parents=True, exist_ok=True)
+    original = gerar()
+    original.save(destino / "robofael.ico", sizes=[(n, n) for n in (16, 24, 32, 48, 64, 128, 256)])
+    original.resize((256, 256), Image.Resampling.LANCZOS).save(destino / "robofael.png")
+    print(f"ícones do Windows gerados em {destino}")
+
+
 if __name__ == "__main__":
+    if sys.argv[1] == "--windows":
+        gerar_windows(Path(sys.argv[2]))
+        sys.exit()
     destino = Path(sys.argv[1])
     original = gerar()
     for n in TAMANHOS:

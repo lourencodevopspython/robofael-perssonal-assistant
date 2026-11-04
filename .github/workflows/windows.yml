@@ -1,0 +1,44 @@
+name: Windows
+
+# Gera o executável do Windows num runner Windows (o PyInstaller não compila para outro sistema).
+# Tag v* (ex.: v3.10.0): anexa o instalador e o pacote portátil à release da tag.
+# Aba Actions → Windows → Run workflow: deixa os arquivos como artefato da execução.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  executavel:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Testes do Windows (registro, atalhos, microfones, pastas)
+        run: |
+          python -m pip install -e ".[dev]"
+          python -m pytest tests/test_windows.py -v
+      - name: Construir
+        shell: pwsh
+        run: ./empacotamento/windows/construir.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Robofael-windows
+          path: |
+            dist/windows/*.zip
+            dist/windows/*-Instalador.exe
+      - name: Publicar na release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/windows/*.zip
+            dist/windows/*-Instalador.exe

@@ -5,9 +5,9 @@
 **Seu assistente pessoal de atividades diárias, com um avatar que ouve, pensa e responde falando.**
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-3.9.1-0ea5e9)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-3.10.0-0ea5e9)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-3776AB?logo=python&logoColor=white)
-![Testes](https://img.shields.io/badge/testes-794%20passando-success?logo=pytest&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-809%20passando-success?logo=pytest&logoColor=white)
 ![Cobertura](https://img.shields.io/badge/cobertura-%E2%89%A580%25-success)
 ![mypy](https://img.shields.io/badge/mypy-100%25%20tipado-2a6db2)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%20.deb-E95420?logo=ubuntu&logoColor=white)
@@ -120,7 +120,7 @@ flowchart LR
 
 | | | |
 |---|---|---|
-| 🚀 [Instalar no Ubuntu](#instalar-no-ubuntu-pacote-deb) | ⚙️ [Configuração](#configuração) | 🔀 [Fluxos de execução](#fluxos-de-execução) |
+| 🚀 [Instalar no Ubuntu](#instalar-no-ubuntu-pacote-deb) · 🪟 [no Windows](#instalar-no-windows) | ⚙️ [Configuração](#configuração) | 🔀 [Fluxos de execução](#fluxos-de-execução) |
 | 💻 [Início rápido (desenvolvimento)](#início-rápido-desenvolvimento) | 🦙 [Cérebro local (Ollama)](#cérebro-local-ollama) | 📈 [Desempenho](#desempenho) |
 | 🗣️ [Uso](#uso) | 🌎 [Idiomas](#idiomas) | 🛠️ [Desenvolvimento](#desenvolvimento) |
 | 🏛️ [Arquitetura](#arquitetura) | 🧭 [Decisões de arquitetura](#decisões-de-arquitetura) | 🔒 [Dados e privacidade](#dados-e-privacidade) · 🩺 [Solução de problemas](#solução-de-problemas) |
@@ -132,8 +132,8 @@ flowchart LR
 O instalador padrão é um pacote `.deb`, feito para o **Ubuntu 24.04**. Ele já traz as dependências Python e o modelo de voz, então a instalação funciona **sem internet**.
 
 ```bash
-make deb                                           # gera dist/robofael_3.9.1_amd64.deb
-sudo apt install ./dist/robofael_3.9.1_amd64.deb   # o apt instala Python, Tk, PortAudio...
+make deb                                           # gera dist/robofael_3.10.0_amd64.deb
+sudo apt install ./dist/robofael_3.10.0_amd64.deb  # o apt instala Python, Tk, PortAudio...
 ```
 
 Depois disso:
@@ -160,6 +160,39 @@ Depois disso:
 
 - **Versão do Python:** as wheels são construídas para o Python da máquina que gera o pacote. Para outra versão do Ubuntu, rode `make deb` nela.
 - **Avatares:** o pacote inclui as ilustrações de `assets/avatares/`.
+
+</details>
+
+## Instalar no Windows
+
+Para o **Windows 10 e 11 (64 bits)** há um instalador, `Robofael-<versão>-Instalador.exe`, e uma versão portátil, `Robofael-<versão>-portatil.zip`, que roda sem instalar (é só descompactar e abrir o `Robofael.exe`). Os dois trazem tudo junto: Python, bibliotecas, avatares e o modelo de voz do "ok Fael".
+
+- **Baixar:** na página de [Releases](https://github.com/lourencodevopspython/robofael-perssonal-assistant/releases) do repositório.
+- **Instalar:** o instalador não pede administrador. O programa vai para `%LOCALAPPDATA%\Programs\Robofael`, com atalho no Menu Iniciar (e na Área de Trabalho, se quiser). Como o executável não é assinado, o Windows SmartScreen pode avisar na primeira vez: **Mais informações → Executar assim mesmo**.
+- **Seus dados** (agenda, histórico, preferências) ficam em `%LOCALAPPDATA%\Robofael\dados`, e o log em `%LOCALAPPDATA%\Robofael\robofael.log`. Desinstalar ou atualizar não apaga os dados.
+- **Claude:** defina `ANTHROPIC_API_KEY` nas variáveis de ambiente do usuário (Iniciar → "Editar as variáveis de ambiente para sua conta") e abra o Robofael de novo. Sem a chave, ele usa o [Ollama](#cérebro-local-ollama) (que também existe para Windows) ou o modo offline.
+
+| No Windows | Como funciona |
+|---|---|
+| ⚙ → Microfone | Lista os microfones do Windows; o escolhido é aberto pelo nome, mesmo que mude de porta USB |
+| ⚙ → Abrir ao entrar no computador | Valor `Robofael` em `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
+| ⚙ → Comando `robofael` no terminal | `robofael.cmd` em `%LOCALAPPDATA%\Microsoft\WindowsApps`, pasta que já está no PATH |
+| "abre o navegador", "abre a calculadora" | Atalhos do Menu Iniciar, os aplicativos do sistema (Calculadora, Configurações, Bloco de Notas, Explorador...) e o navegador padrão |
+
+<details>
+<summary><b>🛠️ Gerar o executável</b></summary>
+<br>
+
+O PyInstaller só gera executáveis para o sistema em que roda, então o `.exe` é feito num Windows:
+
+- **Pelo GitHub Actions** (sem precisar de um Windows): ao enviar uma tag `v*` (ex.: `git tag v3.10.0 && git push origin v3.10.0`), o workflow [`windows.yml`](.github/workflows/windows.yml) gera o instalador e o pacote portátil num runner Windows e os anexa à release da tag. Também dá para rodar pela aba **Actions → Windows → Run workflow**; aí os arquivos ficam como artefato da execução.
+- **Num Windows com Python 3.10+** e o [Inno Setup 6](https://jrsoftware.org/isinfo.php) (opcional, para o instalador):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File empacotamento\windows\construir.ps1
+  ```
+
+O script baixa o modelo de voz, gera os ícones, monta a pasta com o PyInstaller ([`robofael.spec`](empacotamento/windows/robofael.spec)), **testa o executável** com `Robofael.exe --verificar` (bibliotecas, conversor FLAC, modelo de voz e um avatar desenhado no Tk) e gera o `.zip` e o instalador ([`robofael.iss`](empacotamento/windows/robofael.iss)) em `dist\windows`.
 
 </details>
 
@@ -478,7 +511,7 @@ robofael/
 │   ├── i18n.py                   # idiomas, catálogo de mensagens e Tradutor
 │   ├── bootstrap.py              # raiz de composição
 │   └── configuracao.py
-├── tests/                        # 794 testes (pytest), inclusive de arquitetura e de desempenho
+├── tests/                        # 809 testes (pytest), inclusive de arquitetura e de desempenho
 ├── empacotamento/                # instalador .deb (scripts, atalhos, ícone, construção e teste)
 ├── docs/imagens/                 # prints e GIFs deste README
 ├── docs/monografia/              # monografia (TCC, ABNT) em LaTeX + PDF
@@ -832,7 +865,7 @@ Na versão 3.4 (medido no app real, depois da saudação, com o assistente parad
 ## Desenvolvimento
 
 ```bash
-make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 794 testes — o mesmo que a CI roda
+make verificar      # lint (ruff) + tipos (mypy, assinaturas 100% tipadas) + 809 testes — o mesmo que a CI roda
 make previa         # gera previa_<avatar>.png: boca fechada e nas vogais, para conferir um avatar
 make midia          # refaz os prints e GIFs deste README (docs/imagens) com o app real e dados de exemplo
 make testar-rapido  # sem os testes marcados como "lento" (renderização e interface)
@@ -869,6 +902,7 @@ A documentação acadêmica do projeto (requisitos funcionais e não funcionais,
 | `test_quando`, `test_documentos` | Datas e horários em português e inglês ("amanhã às 9", "in five minutes") e o "gerar doc" (nomes, pasta, nada sobrescrito) |
 | `test_microfone_inicializacao` | Microfones do servidor de áudio, escolha só durante a abertura, reabertura da escuta passiva, atalho de login e comando no terminal |
 | `test_idioma_e_traducao` | "mudar para inglês" por voz (confirmação no idioma novo, preferência salva, falas parecidas que não trocam), tarefas e lembretes traduzidos (uma vez por idioma, cache no SQLite, itens numerados, falhas e prioridade da conversa) e "concluir todas as tarefas" |
+| `test_windows` | Microfones do Windows (só a API MME, aberto pelo índice), "abrir ao entrar" no registro e `robofael.cmd`, programas do Menu Iniciar e do sistema, navegador padrão, pastas do executável e a verificação do pacote (`--verificar`); no CI, também com o registro de verdade, no runner Windows |
 | `test_banco_e_modelos` | Mudar o banco de lugar com o app aberto, recusa de sobrescrever, backup conferido, banco ausente na abertura e catálogos do Claude e do Ollama |
 
 </details>

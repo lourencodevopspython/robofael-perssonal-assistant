@@ -6,12 +6,26 @@ import json
 import logging
 import os
 import re
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 RAIZ_PROJETO = Path(__file__).resolve().parents[2]
+# Empacotado (PyInstaller, o executável do Windows): avatares e o modelo de voz vêm de dentro do pacote,
+# que é só leitura; agenda, preferências e caches ficam na pasta do usuário (%LOCALAPPDATA%\Robofael).
+EMPACOTADO = bool(getattr(sys, "frozen", False))
+RAIZ_RECURSOS = Path(getattr(sys, "_MEIPASS", RAIZ_PROJETO))
+
+
+def pasta_usuario(env: Mapping[str, str] | None = None) -> Path:
+    """Onde o executável guarda os dados do usuário; no desenvolvimento, a própria pasta do projeto."""
+    if not EMPACOTADO:
+        return RAIZ_PROJETO
+    env = os.environ if env is None else env
+    base = env.get("LOCALAPPDATA") or env.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return Path(base) / "Robofael"
 PREFIXO_AMBIENTE = "ROBOFAEL_"
 PREFIXO_AMBIENTE_LEGADO = "EUROBO_"  # nome antigo (até a 3.4.0), ainda aceito com aviso
 
@@ -92,12 +106,18 @@ NOME_ASSISTENTE = "Robofael"
 FORMATO_LOG = f"%(asctime)s [{NOME_ASSISTENTE}] %(levelname)s %(name)s: %(message)s"
 
 
-def configurar_logs(detalhado: bool = False) -> None:
+def configurar_logs(detalhado: bool = False, arquivo: Path | None = None) -> None:
     """`detalhado` liga o DEBUG só do próprio projeto; bibliotecas ficam em WARNING
-    (senão PIL, httpcore e asyncio inundam o terminal)."""
+    (senão PIL, httpcore e asyncio inundam o terminal). Sem terminal (o executável do Windows não tem
+    console) e com `arquivo`, o log vai para ele."""
     import logging
 
-    logging.basicConfig(level=logging.INFO, format=FORMATO_LOG, datefmt="%H:%M:%S")
+    if arquivo is not None and sys.stderr is None:
+        arquivo.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(level=logging.INFO, format=FORMATO_LOG, datefmt="%Y-%m-%d %H:%M:%S",
+                            filename=arquivo, encoding="utf-8")
+    else:
+        logging.basicConfig(level=logging.INFO, format=FORMATO_LOG, datefmt="%H:%M:%S")
     for ruidoso in ("PIL", "httpx", "httpx2", "httpcore", "httpcore2", "anthropic", "asyncio", "websockets",
                     "aiohttp", "urllib3", "gtts"):
         logging.getLogger(ruidoso).setLevel(logging.WARNING)
@@ -119,7 +139,7 @@ class Configuracao:
     timeout_api_s: float = 30.0
     pausa_fim_fala_s: float = 0.7  # silêncio que encerra uma frase do usuário
     max_itens_cache_tts: int = 300
-    pasta_modelos: Path = RAIZ_PROJETO / "modelos"
+    pasta_modelos: Path = RAIZ_RECURSOS / "modelos"
     modelo_ativacao: str = "vosk-model-small-pt-0.3"
     ativacao_por_voz: bool = True  # escuta passiva da frase de ativação
     frase_ativacao: str = "ok Fael"
@@ -184,13 +204,14 @@ class Configuracao:
                                                                       ("url_ollama", "OLLAMA_URL"),
                                                                       ("modelo_local", "OLLAMA_MODELO"))
                                      if (valor := _variavel(env, nome))}
-        pasta_dados = caminho("DADOS", RAIZ_PROJETO / "dados")
+        usuario = pasta_usuario(env)
+        pasta_dados = caminho("DADOS", usuario / "dados")
         return cls(
-            pasta_assets=caminho("ASSETS", RAIZ_PROJETO / "assets"),
+            pasta_assets=caminho("ASSETS", RAIZ_RECURSOS / "assets"),
             pasta_dados=pasta_dados,
             banco_escolhido=ler_local_banco(pasta_dados),
-            pasta_cache=caminho("CACHE", RAIZ_PROJETO / ".cache"),
-            pasta_modelos=caminho("MODELOS", RAIZ_PROJETO / "modelos"),
+            pasta_cache=caminho("CACHE", usuario / (".cache" if usuario == RAIZ_PROJETO else "cache")),
+            pasta_modelos=caminho("MODELOS", RAIZ_RECURSOS / "modelos"),
             ativacao_por_voz=(_variavel(env, "ATIVACAO") or "1").strip().lower() not in ("0", "nao", "não", "false"),
             idioma=_idioma(_variavel(env, "IDIOMA")),
             cerebro=_cerebro(_variavel(env, "CEREBRO")),

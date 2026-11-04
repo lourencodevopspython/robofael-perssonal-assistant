@@ -16,6 +16,7 @@ import speech_recognition as sr
 
 from robofael.adaptadores.alsa import silenciar_alsa, stderr_nativo_silenciado
 from robofael.adaptadores.dispositivos_audio import microfone_escolhido
+from robofael.adaptadores.dispositivos_windows import indice_microfone
 from robofael.audio.analise import rms_pcm16
 from robofael.audio.ganho import GanhoAutomatico, pico_pcm16
 from robofael.audio.vad import DetectorFala, StatusFala, nivel_visual
@@ -54,13 +55,16 @@ class MicrofoneGoogle:
     @contextmanager
     def _aberto(self) -> Iterator[sr.Microphone]:
         """Abre o microfone escolhido sem deixar o PyAudio/JACK poluírem o terminal."""
-        with stderr_nativo_silenciado(), microfone_escolhido(self._escolhido()):
-            fonte = self._mic.__enter__()
+        escolhido = self._escolhido()
+        indice = indice_microfone(escolhido)  # Windows: pelo índice; Linux: pelo servidor de áudio
+        mic = self._mic if indice is None else sr.Microphone(device_index=indice)
+        with stderr_nativo_silenciado(), microfone_escolhido(escolhido):
+            fonte = mic.__enter__()
         try:
             yield fonte
         finally:
             with stderr_nativo_silenciado():
-                self._mic.__exit__(None, None, None)
+                mic.__exit__(None, None, None)
 
     def _calibrar(self, segundos: float = 0.8) -> tuple[float, float]:
         """Limiar de fala e ruído típico do ambiente (mediana do RMS)."""

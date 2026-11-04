@@ -10,20 +10,25 @@ Aqui só se escolhe e se conecta (injeção de dependências). As regras sobre o
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import logging
 import os
+import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 from robofael.adaptadores.claude import CatalogoClaude
 from robofael.adaptadores.dispositivos_audio import DispositivosPulse
+from robofael.adaptadores.dispositivos_windows import DispositivosWindows
 from robofael.adaptadores.documentos import PastaDocumentos
 from robofael.adaptadores.ferramentas import ExecutorFerramentas
 from robofael.adaptadores.inicializacao_linux import InicializacaoLinux
+from robofael.adaptadores.inicializacao_windows import InicializacaoWindows
 from robofael.adaptadores.offline import ModeloOffline
 from robofael.adaptadores.ollama import CatalogoOllama, ClienteOllama
 from robofael.adaptadores.programas_linux import LancadorLinux
+from robofael.adaptadores.programas_windows import LancadorWindows
 from robofael.adaptadores.sqlite import BancoSqlite
 from robofael.aplicacao.agendador import AgendadorLembretes
 from robofael.aplicacao.barramento import Barramento
@@ -52,6 +57,14 @@ from robofael.portas import (
 log = logging.getLogger(__name__)
 
 
+def adaptadores_do_sistema(plataforma: str = sys.platform) -> tuple[LancadorProgramas, DispositivosAudio,
+                                                                   InicializacaoSistema]:
+    """Programas, microfones e inicialização do sistema operacional em uso (Windows ou Linux)."""
+    if plataforma == "win32":
+        return LancadorWindows(), DispositivosWindows(), InicializacaoWindows()
+    return LancadorLinux(), DispositivosPulse(), InicializacaoLinux()
+
+
 def montar_nucleo(config: Configuracao, lancador: LancadorProgramas | None = None,
                   dispositivos: DispositivosAudio | None = None,
                   inicializacao: InicializacaoSistema | None = None) -> Nucleo:
@@ -71,13 +84,14 @@ def montar_nucleo(config: Configuracao, lancador: LancadorProgramas | None = Non
     agenda.observar(lambda: barramento.publicar(AgendaAtualizada()))
     preferencias = banco.carregar_preferencias()
     tradutor = Tradutor(idioma_inicial(config, preferencias))
+    padrao_lancador, padrao_dispositivos, padrao_inicializacao = adaptadores_do_sistema()
     tradutor.observar(lambda idioma: barramento.publicar(IdiomaMudou(idioma)))
-    programas = ServicoProgramas(lancador or LancadorLinux(), tradutor)
+    programas = ServicoProgramas(lancador or padrao_lancador, tradutor)
     traducoes = TraducaoAgenda(agenda, banco, tradutor, lambda: barramento.publicar(TraducoesAtualizadas()))
     return Nucleo(config, barramento, agenda, banco, Memoria(banco, tradutor), programas, preferencias, tradutor,
                   ler_perfil_voz=lambda: carregar_perfil(config.arquivo_perfil_voz),
-                  dispositivos=dispositivos or DispositivosPulse(),
-                  inicializacao=inicializacao or InicializacaoLinux(),
+                  dispositivos=dispositivos or padrao_dispositivos,
+                  inicializacao=inicializacao or padrao_inicializacao,
                   catalogos=(CatalogoClaude(), CatalogoOllama(ClienteOllama(config.url_ollama))),
                   traducoes=traducoes)
 
@@ -223,3 +237,36 @@ def falar_amostra(texto: str, voz: str, tom: str, ritmo: str) -> None:
 
     reprodutor = ReprodutorPygame()
     reprodutor.tocar(reprodutor.preparar(SintetizadorEdge(voz, tom, ritmo).sintetizar(texto)), threading.Event())
+
+
+# ---------- Verificação do pacote (executável do Windows) ----------
+BIBLIOTECAS = ("anthropic", "edge_tts", "gtts", "pygame", "speech_recognition", "pyaudio", "vosk", "numpy",
+               "PIL.ImageTk", "PIL._tkinter_finder", "tkinter")
+
+
+def verificar_instalacao(config: Configuracao) -> list[str]:
+    """Problemas que impediriam o assistente de funcionar (vazio = tudo certo): bibliotecas que o empacotador
+    não incluiu, o conversor FLAC do reconhecimento de fala, o modelo de voz e os avatares."""
+    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    problemas = []
+    for nome in BIBLIOTECAS:
+        try:
+            importlib.import_module(nome)
+        except Exception as e:
+            problemas.append(f"biblioteca {nome}: {e}")
+    try:
+        import speech_recognition
+
+        speech_recognition.audio.get_flac_converter()  # o Google recebe o áudio em FLAC
+    except Exception as e:
+        problemas.append(f"conversor FLAC: {e}")
+    try:
+        import vosk
+
+        vosk.SetLogLevel(-1)
+        vosk.Model(str(config.pasta_modelo_ativacao))
+    except Exception as e:
+        problemas.append(f"modelo de voz em {config.pasta_modelo_ativacao}: {e}")
+    if not list(config.pasta_avatares.glob("*.png")):
+        problemas.append(f"avatares: nenhuma imagem em {config.pasta_avatares}")
+    return problemas

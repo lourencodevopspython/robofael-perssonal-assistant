@@ -24,6 +24,7 @@ import speech_recognition as sr
 
 from robofael.adaptadores.alsa import silenciar_alsa, stderr_nativo_silenciado
 from robofael.adaptadores.dispositivos_audio import microfone_escolhido
+from robofael.adaptadores.dispositivos_windows import indice_microfone
 from robofael.audio.analise import rms_pcm16
 from robofael.audio.ganho import GanhoAutomatico, pico_pcm16
 from robofael.audio.vad import DetectorFala, StatusFala
@@ -81,8 +82,10 @@ class AtivacaoVosk:
         escolhido = self._escolhido()
         if escolhido != self._ganho_de:  # outro microfone: mede o ruído e o ganho de novo
             self._ganho, self._ganho_de, self._avisou_voz_baixa = None, escolhido, False
+        indice = indice_microfone(escolhido)  # Windows: pelo índice; Linux: pelo servidor de áudio
+        mic = self._mic if indice is None else sr.Microphone(device_index=indice, sample_rate=TAXA, chunk_size=BLOCO)
         with stderr_nativo_silenciado(), microfone_escolhido(escolhido):
-            fonte = self._mic.__enter__()
+            fonte = mic.__enter__()
         try:
             fala: list[bytes] = []
             ruido: collections.deque[float] = collections.deque(maxlen=int(HISTORICO_RUIDO_S * TAXA / BLOCO))
@@ -118,7 +121,7 @@ class AtivacaoVosk:
             return None
         finally:
             with stderr_nativo_silenciado():
-                self._mic.__exit__(None, None, None)
+                mic.__exit__(None, None, None)
 
     def _medir_ganho(self, bloco: bytes, ruido: collections.deque[float]) -> GanhoAutomatico:
         if self._ganho is None:

@@ -2,9 +2,19 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões seguem [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [3.10.0] — 2026-11-04
 
 ### Adicionado
+- **Executável para Windows 10 e 11:** instalador (`Robofael-<versão>-Instalador.exe`, Inno Setup, sem pedir
+  administrador) e versão portátil (`.zip`), com Python, bibliotecas, avatares e o modelo de voz embutidos.
+  Gerados pelo GitHub Actions num runner Windows ao enviar uma tag `v*` (workflow `windows.yml`) ou com
+  `empacotamento\windows\construir.ps1` num Windows. O `Robofael.exe --verificar` confere bibliotecas, o
+  conversor FLAC, o modelo de voz e desenha um avatar no Tk; o build só publica um executável que passou.
+- Adaptadores do Windows: microfones pelo PyAudio (API MME, o escolhido aberto pelo índice, procurado pelo
+  nome a cada abertura); "abrir ao entrar" na chave `Run` do usuário; comando `robofael` por um
+  `robofael.cmd` em `%LOCALAPPDATA%\Microsoft\WindowsApps`; programas do Menu Iniciar, aplicativos do
+  sistema (Calculadora, Configurações...) e o navegador padrão lido do registro.
+- No executável, os dados ficam em `%LOCALAPPDATA%\Robofael` e o log em `robofael.log` (sem console).
 - **Trocar o idioma por voz:** "ok Fael, mudar para inglês" e "ok Fael, mudar para português" (também
   "fale em inglês", "change to English", "switch to Portuguese"...) trocam respostas, voz, reconhecimento de
   fala e interface na hora, confirmam já no idioma novo e ficam salvos para as próximas aberturas. Falas
@@ -19,6 +29,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
   as pendentes de uma vez, numa só transação, com um registro no histórico para cada uma. Também é uma
   ferramenta do Claude (`concluir_todas_tarefas`); no Ollama, como as outras ações que alteram a agenda, vale
   só o comando explícito.
+
+### Corrigido (executável)
+- O cache do avatar dependia de ler o código-fonte do renderizador, que não existe no executável: agora usa o
+  bytecode quando não há fonte.
 
 ### Testes
 - O Ollama instalado na máquina não entra mais nos testes (aparece como fora do ar na porta padrão): o

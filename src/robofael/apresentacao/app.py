@@ -12,6 +12,7 @@ import argparse
 import dataclasses
 import logging
 import signal
+import tempfile
 import threading
 import tkinter as tk
 from collections.abc import Iterator
@@ -48,8 +49,8 @@ from robofael.apresentacao.painel import PainelAgenda
 from robofael.apresentacao.palco import FPS_ATIVO, Palco
 from robofael.apresentacao.tema import ERRO, FONTE, FUNDO, PRIMARIA, TEXTO_APAGADO, TEXTO_SUAVE, gerar_halos
 from robofael.avatar import AVATARES, gerar_quadros
-from robofael.bootstrap import iniciar_servicos, montar_nucleo
-from robofael.configuracao import NOME_ASSISTENTE, Configuracao, configurar_logs
+from robofael.bootstrap import iniciar_servicos, montar_nucleo, verificar_instalacao
+from robofael.configuracao import NOME_ASSISTENTE, Configuracao, configurar_logs, pasta_usuario
 from robofael.dominio.estados import Estado
 from robofael.dominio.eventos import (
     AgendaAtualizada,
@@ -416,6 +417,22 @@ class Janela:
         self.raiz.destroy()
 
 
+def verificar_avatar(config: Configuracao) -> list[str]:
+    """Gera um avatar pequeno e o mostra no Tk: confere o renderizador e o Pillow com o Tk no pacote."""
+    try:
+        with tempfile.TemporaryDirectory() as cache:
+            quadros, _centro = gerar_quadros("cracha", 96, pasta_cache=cache, pasta_imagens=config.pasta_avatares)
+            raiz = tk.Tk()
+            try:
+                raiz.withdraw()
+                ImageTk.PhotoImage(quadros[0][0], master=raiz)
+            finally:
+                raiz.destroy()
+    except Exception as e:
+        return [f"avatar: {type(e).__name__}: {e}"]
+    return []
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="robofael",
                                 description=f"{NOME_ASSISTENTE} — assistente pessoal com avatar por voz")
@@ -424,10 +441,17 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--sem-ativacao", action="store_true", help="desliga a escuta da frase de ativação (\"ok Fael\")")
     p.add_argument("--idioma", choices=[i.value for i in Idioma], help="pt-BR ou en-US (padrão: o salvo)")
     p.add_argument("-v", "--verbose", action="store_true", help="logs de depuração")
+    p.add_argument("--verificar", action="store_true", help="confere bibliotecas, modelo de voz e avatares e sai")
     args = p.parse_args(argv)
-    configurar_logs(args.verbose)
+    configurar_logs(args.verbose, arquivo=pasta_usuario() / "robofael.log")  # sem console: log em arquivo
 
     config = Configuracao.do_ambiente()
+    if args.verificar:
+        problemas = verificar_instalacao(config) + verificar_avatar(config)
+        for problema in problemas:
+            log.error("Instalação incompleta: %s", problema)
+        log.info("Verificação: %s", "falhou" if problemas else "tudo certo")
+        raise SystemExit(1 if problemas else 0)
     if args.sem_ativacao:
         config = dataclasses.replace(config, ativacao_por_voz=False)
     if args.idioma:
@@ -438,6 +462,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.sem_ativacao:  # a opção da linha de comando vale mais que a preferência salva
         nucleo.preferencias = dataclasses.replace(nucleo.preferencias, ativacao_por_voz=False)
     raiz = tk.Tk(className="robofael")  # WM_CLASS: o Ubuntu associa a janela ao ícone do .desktop
+    icone = config.pasta_assets / "robofael.png"  # gerado no empacotamento (Windows: ícone da janela)
+    if icone.is_file():
+        raiz.iconphoto(True, tk.PhotoImage(file=str(icone)))
     janela = Janela(raiz, nucleo, args.avatar, args.continuo)
 
     def pedir_encerramento(*_sinal: object) -> None:
