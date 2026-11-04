@@ -2,13 +2,15 @@
 # dist\windows\Robofael-<versão>-Instalador.exe. Rode na raiz do projeto, num Windows com Python 3.10+:
 #   powershell -ExecutionPolicy Bypass -File empacotamento\windows\construir.ps1
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $true  # python/pip com erro param o script (PowerShell 7.3+)
 $Raiz = Resolve-Path "$PSScriptRoot\..\.."
 Set-Location $Raiz
 $Modelo = "vosk-model-small-pt-0.3"
 
 Write-Host "==> Dependências"
 python -m pip install --upgrade pip
-python -m pip install . "pyinstaller>=6.10"
+# Editável: o projeto é lido daqui (avatares em assets\, modelo em modelos\), não de uma cópia no site-packages
+python -m pip install -e . "pyinstaller>=6.10"
 $Versao = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
 
 Write-Host "==> Modelo de voz ($Modelo)"
